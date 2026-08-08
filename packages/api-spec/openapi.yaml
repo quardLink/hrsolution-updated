@@ -1,0 +1,258 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: attendance
+    description: Attendance operations
+  - name: admin
+    description: Admin operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /attendance/employees:
+    get:
+      operationId: listEmployees
+      tags: [attendance]
+      summary: List all employees
+      responses:
+        "200":
+          description: List of employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLoginResponse"
+        "401":
+          description: Invalid password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/logs:
+    get:
+      operationId: getAdminLogs
+      tags: [admin]
+      summary: Get all attendance logs
+      parameters:
+        - in: header
+          name: x-admin-password
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of all attendance logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLogsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /attendance/log:
+    post:
+      operationId: logAttendance
+      tags: [attendance]
+      summary: Log a check-in or check-out event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogAttendanceBody"
+      responses:
+        "200":
+          description: Attendance logged successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogAttendanceResponse"
+        "400":
+          description: Invalid request or wrong PIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        reportingMorning:
+          type: string
+        reportingAfternoon:
+          type: string
+      required:
+        - id
+        - name
+
+    AttendanceLogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        employeeName:
+          type: string
+        employeeId:
+          type: string
+        session:
+          type: string
+        action:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+      required:
+        - timestamp
+        - employeeName
+        - employeeId
+        - session
+        - action
+        - status
+        - message
+
+    AdminLoginBody:
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
+
+    AdminLoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    AdminLogsResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceLogEntry"
+        employees:
+          type: array
+          items:
+            $ref: "#/components/schemas/Employee"
+      required:
+        - logs
+        - employees
+
+    LogAttendanceBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        pin:
+          type: string
+        action:
+          type: string
+          enum: [checkin, checkout]
+        session:
+          type: string
+          enum: [morning, afternoon_out, afternoon_in, evening]
+      required:
+        - employeeId
+        - pin
+        - action
+        - session
+
+    LogAttendanceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        status:
+          type: string
+          enum: [on_time, late, very_late, early, on_schedule]
+        employeeName:
+          type: string
+        timestamp:
+          type: string
+      required:
+        - success
+        - message
+        - status
+        - employeeName
+        - timestamp
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
