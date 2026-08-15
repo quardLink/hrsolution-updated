@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { getDateKey, minutesLate, parseTimestamp, formatTime as fmtTime } from "../../lib/attendance";
 
 interface LogEntry {
   timestamp: string;
@@ -20,43 +21,6 @@ interface Props {
   employees: Employee[];
 }
 
-function parseTimestamp(ts: string): Date | null {
-  const cleaned = ts.replace(",", "").trim();
-  const m = cleaned.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})[ ]+(\d{1,2}):(\d{2}):(\d{2})(?:\s*(AM|PM))?/i);
-  if (!m) return null;
-  const month = parseInt(m[1]) - 1;
-  const day = parseInt(m[2]);
-  const year = parseInt(m[3]);
-  let hour = parseInt(m[4]);
-  const min = parseInt(m[5]);
-  const sec = parseInt(m[6]);
-  const ampm = m[7]?.toUpperCase();
-  if (ampm === "PM" && hour < 12) hour += 12;
-  if (ampm === "AM" && hour === 12) hour = 0;
-  return new Date(year, month, day, hour, min, sec);
-}
-
-function fmtTime(d: Date): string {
-  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-}
-
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function dateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function minutesLate(checkIn: Date, expected: string): number {
-  const m = expected.match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return 0;
-  const expectedMin = parseInt(m[1]) * 60 + parseInt(m[2]);
-  const actualMin = checkIn.getHours() * 60 + checkIn.getMinutes();
-  return Math.max(0, actualMin - expectedMin);
-}
-
 interface TodayRow {
   employee: Employee;
   firstCheckIn: Date | null;
@@ -65,7 +29,7 @@ interface TodayRow {
 }
 
 export default function TodayTab({ logs, employees }: Props) {
-  const today = todayKey();
+  const today = getDateKey(new Date());
 
   const rows: TodayRow[] = useMemo(() => {
     return employees.map((emp) => {
@@ -74,7 +38,7 @@ export default function TodayTab({ logs, employees }: Props) {
       for (const log of logs) {
         if (log.employeeId !== emp.id) continue;
         const d = parseTimestamp(log.timestamp);
-        if (!d || dateKey(d) !== today) continue;
+        if (!d || getDateKey(d) !== today) continue;
         if (log.action === "checkin") {
           if (!firstCheckIn || d < firstCheckIn) firstCheckIn = d;
         } else if (log.action === "checkout") {
