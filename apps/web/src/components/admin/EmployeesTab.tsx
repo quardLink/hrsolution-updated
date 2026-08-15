@@ -46,6 +46,7 @@ export default function EmployeesTab({ password, baseUrl, onError }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [salaryText, setSalaryText] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -85,12 +86,14 @@ export default function EmployeesTab({ password, baseUrl, onError }: Props) {
   function openAdd() {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setSalaryText("");
     setShowForm(true);
   }
 
   function openEdit(emp: Employee) {
     setEditing(emp);
     setForm({ ...emp });
+    setSalaryText(emp.monthlySalary === 0 ? "" : String(emp.monthlySalary));
     setShowForm(true);
   }
 
@@ -98,6 +101,7 @@ export default function EmployeesTab({ password, baseUrl, onError }: Props) {
     setShowForm(false);
     setEditing(null);
     setForm(EMPTY_FORM);
+    setSalaryText("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -399,11 +403,18 @@ export default function EmployeesTab({ password, baseUrl, onError }: Props) {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Salary (SAR)</label>
                   <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={form.monthlySalary}
-                    onChange={(e) => setForm({ ...form, monthlySalary: Number(e.target.value) })}
+                    type="text"
+                    inputMode="decimal"
+                    value={salaryText}
+                    onChange={(e) => {
+                      let raw = e.target.value.replace(/[^0-9.]/g, "");
+                      const firstDot = raw.indexOf(".");
+                      if (firstDot !== -1) {
+                        raw = raw.slice(0, firstDot + 1) + raw.slice(firstDot + 1).replace(/\./g, "");
+                      }
+                      setSalaryText(raw);
+                      setForm({ ...form, monthlySalary: raw === "" || raw === "." ? 0 : Number(raw) });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
                   <p className="text-xs text-gray-400 mt-1">Used by the Payroll tab to calculate pay — required before running payroll for this employee.</p>

@@ -1,4 +1,4 @@
-import { ensureSheet, readSheet, updateSheetRow, appendSheetRow, getSheetsClient } from "./googleSheets";
+import { ensureSheet, readSheet, updateSheetRow, appendSheetRow, getSheetsClient, isGoogleSheetsConfigured } from "./googleSheets";
 
 export interface OfficeSettings {
   defaultMorningStart: string;
@@ -9,7 +9,13 @@ export interface OfficeSettings {
   companyName: string;
   lateThresholdMinutes: string;
   adminPasswordHash: string;
-  weeklyOffDay: string; // e.g. "Friday" — used by payroll to apply full-day OT
+  weeklyOffDay: string; // e.g. "Friday" — informational only; payroll treats every day identically
+  // Payroll-specific — a single company-wide shift with a floating break,
+  // kept separate from the default* fields above (those still drive the
+  // kiosk's late-arrival messages, a different concern).
+  payrollShiftStart: string;
+  payrollShiftEnd: string;
+  payrollBreakMinutes: string;
 }
 
 const SHEET_NAME = "Settings";
@@ -25,6 +31,9 @@ const DEFAULTS: OfficeSettings = {
   lateThresholdMinutes: "15",
   adminPasswordHash: "",
   weeklyOffDay: "Friday",
+  payrollShiftStart: "09:00",
+  payrollShiftEnd: "18:00",
+  payrollBreakMinutes: "60",
 };
 
 // Keys that we always want to seed into the sheet on first run.
@@ -38,6 +47,9 @@ const SEEDABLE_KEYS: (keyof OfficeSettings)[] = [
   "companyName",
   "lateThresholdMinutes",
   "weeklyOffDay",
+  "payrollShiftStart",
+  "payrollShiftEnd",
+  "payrollBreakMinutes",
 ];
 
 let cached: { data: OfficeSettings; ts: number } | null = null;
@@ -45,6 +57,9 @@ const CACHE_MS = 30 * 1000;
 
 export async function getOfficeSettings(sheetId: string): Promise<OfficeSettings> {
   if (cached && Date.now() - cached.ts < CACHE_MS) return cached.data;
+
+  // No Google Sheets configured — serve the hardcoded defaults directly.
+  if (!isGoogleSheetsConfigured()) return { ...DEFAULTS };
 
   await ensureSheet(sheetId, SHEET_NAME, HEADERS);
   const rows = await readSheet(sheetId, SHEET_NAME, 2);

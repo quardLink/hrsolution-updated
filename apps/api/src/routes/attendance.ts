@@ -1,17 +1,16 @@
 import { Router, type IRouter } from "express";
 import { getPublicEmployees, verifyEmployee, getAttendanceStatus } from "../lib/employees";
 import { getOfficeSettings } from "../lib/settings";
-import { appendAttendanceRow, ensureSheetHeaders } from "../lib/googleSheets";
+import { appendAttendanceRow, ensureSheetHeaders, isGoogleSheetsConfigured } from "../lib/googleSheets";
 import { LogAttendanceBody } from "@workspace/api-schema";
 
 const router: IRouter = Router();
 
 router.get("/attendance/employees", async (_req, res): Promise<void> => {
-  const sheetId = process.env.GOOGLE_SHEET_ID;
-  if (!sheetId) {
-    res.status(500).json({ error: "Google Sheets not configured" });
-    return;
-  }
+  // Empty string is a safe placeholder here — getOfficeSettings/getPublicEmployees
+  // fall back to local defaults/seed data without touching it when Google
+  // Sheets isn't configured (see isGoogleSheetsConfigured in googleSheets.ts).
+  const sheetId = process.env.GOOGLE_SHEET_ID ?? "";
   try {
     const settings = await getOfficeSettings(sheetId);
     const employees = await getPublicEmployees(sheetId, {
@@ -36,11 +35,8 @@ router.post("/attendance/log", async (req, res): Promise<void> => {
 
   const { employeeId, pin, action, session } = parsed.data;
 
-  const sheetId = process.env.GOOGLE_SHEET_ID;
-  if (!sheetId) {
-    res.status(500).json({ error: "Google Sheets not configured" });
-    return;
-  }
+  // Same local-fallback rationale as the /attendance/employees route above.
+  const sheetId = process.env.GOOGLE_SHEET_ID ?? "";
 
   const employee = await verifyEmployee(sheetId, employeeId, pin);
   if (!employee) {
@@ -79,7 +75,7 @@ router.post("/attendance/log", async (req, res): Promise<void> => {
     hour12: true,
   });
 
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+  if (isGoogleSheetsConfigured()) {
     try {
       await ensureSheetHeaders(sheetId);
       await appendAttendanceRow({

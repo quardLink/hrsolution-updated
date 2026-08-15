@@ -18,6 +18,7 @@ import {
 import { getAllRoles, addRole, updateRole, deleteRole } from "../lib/roles";
 import { verifyAdminPassword, setAdminPassword } from "../lib/adminPassword";
 import { calculateMonthlyPayroll } from "../lib/payroll";
+import { runDailyPayrollJob } from "../lib/payrollDailyJob";
 
 const router: IRouter = Router();
 
@@ -399,12 +400,10 @@ router.get("/admin/payroll/:employeeId", requireAdmin, async (req, res): Promise
       month,
       logs,
       leaveRequests: leaveRequests.filter((r) => r.employeeId === employee.id),
-      weeklyOffDay: settings.weeklyOffDay,
-      officeDefaults: {
-        morningStart: settings.defaultMorningStart,
-        morningEnd: settings.defaultMorningEnd,
-        afternoonStart: settings.defaultAfternoonStart,
-        afternoonEnd: settings.defaultAfternoonEnd,
+      shift: {
+        shiftStart: settings.payrollShiftStart,
+        shiftEnd: settings.payrollShiftEnd,
+        breakMinutes: Number(settings.payrollBreakMinutes) || 0,
       },
     });
 
@@ -434,11 +433,10 @@ router.get("/admin/payroll-summary", requireAdmin, async (req, res): Promise<voi
       getOfficeSettings(sheetId),
     ]);
 
-    const officeDefaults = {
-      morningStart: settings.defaultMorningStart,
-      morningEnd: settings.defaultMorningEnd,
-      afternoonStart: settings.defaultAfternoonStart,
-      afternoonEnd: settings.defaultAfternoonEnd,
+    const shift = {
+      shiftStart: settings.payrollShiftStart,
+      shiftEnd: settings.payrollShiftEnd,
+      breakMinutes: Number(settings.payrollBreakMinutes) || 0,
     };
 
     const results = employees
@@ -450,8 +448,7 @@ router.get("/admin/payroll-summary", requireAdmin, async (req, res): Promise<voi
           month,
           logs,
           leaveRequests: leaveRequests.filter((r) => r.employeeId === employee.id),
-          weeklyOffDay: settings.weeklyOffDay,
-          officeDefaults,
+          shift,
         }),
       );
 
@@ -459,6 +456,25 @@ router.get("/admin/payroll-summary", requireAdmin, async (req, res): Promise<voi
   } catch (err) {
     req.log.error({ err }, "Failed to calculate payroll summary");
     res.status(500).json({ error: "Failed to calculate payroll summary" });
+  }
+});
+
+router.post("/admin/payroll/run-daily", requireAdmin, async (req, res): Promise<void> => {
+  const sheetId = requireSheetId(res);
+  if (!sheetId) return;
+
+  const dateOverride = typeof req.body?.date === "string" ? req.body.date : undefined;
+  if (dateOverride && !/^\d{4}-\d{2}-\d{2}$/.test(dateOverride)) {
+    res.status(400).json({ error: "date must be in YYYY-MM-DD format" });
+    return;
+  }
+
+  try {
+    await runDailyPayrollJob(sheetId, dateOverride);
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to run daily payroll job");
+    res.status(500).json({ error: "Failed to run daily payroll job" });
   }
 });
 

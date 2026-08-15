@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface PayrollResult {
   employeeId: string;
@@ -12,9 +14,16 @@ interface PayrollResult {
   paidLeaveDays: number;
   unpaidLeaveDays: number;
   leaveDeduction: number;
+  absentDays: number;
+  absenceDeduction: number;
   baseSalary: number;
   finalSalary: number;
 }
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 interface Props {
   password: string;
@@ -59,7 +68,114 @@ export default function PayrollTab({ password, baseUrl, onError }: Props) {
 
   const totalPayout = results.reduce((sum, r) => sum + r.finalSalary, 0);
   const totalOtCost = results.reduce((sum, r) => sum + r.otPay, 0);
+  const totalDeductions = results.reduce((sum, r) => sum + r.leaveDeduction + r.absenceDeduction, 0);
   const missingSalary = results.filter((r) => r.baseSalary === 0);
+
+  function exportPdf() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 40;
+    const periodText = `${MONTH_NAMES[month - 1]} ${year}`;
+    const generated = new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" });
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 90, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("PETRO SAFE TECH", margin, 42);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(180, 200, 230);
+    doc.text(`Payroll Report — ${periodText}`, margin, 62);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${generated}`, margin, 78);
+
+    let y = 120;
+    doc.setTextColor(30, 41, 59);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Summary", margin, y);
+    y += 6;
+    doc.setDrawColor(220);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 18;
+
+    autoTable(doc, {
+      startY: y,
+      head: [],
+      body: [
+        [
+          "Employees", String(results.length),
+          "Total Payout", `SAR ${totalPayout.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+          "Total OT Cost", `SAR ${totalOtCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+          "Total Deductions", `SAR ${totalDeductions.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+        ],
+      ],
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 6, textColor: [40, 40, 40] },
+      columnStyles: {
+        0: { fontStyle: "bold", fillColor: [241, 245, 249] },
+        2: { fontStyle: "bold", fillColor: [241, 245, 249] },
+        4: { fontStyle: "bold", fillColor: [241, 245, 249] },
+        6: { fontStyle: "bold", fillColor: [241, 245, 249] },
+      },
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 24;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(30, 41, 59);
+    doc.text("Employee Payroll Detail", margin, y);
+    y += 6;
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 12;
+
+    autoTable(doc, {
+      startY: y,
+      head: [[
+        "Employee", "Base Salary", "Worked Hrs", "OT Hrs", "OT Pay",
+        "Paid Leave", "Unpaid Leave", "Absent Days", "Deduction", "Final Salary",
+      ]],
+      body: results.map((r) => [
+        r.employeeName,
+        `SAR ${r.baseSalary.toLocaleString()}`,
+        String(r.totalWorkedHours),
+        String(r.totalOtHours),
+        `SAR ${r.otPay.toLocaleString()}`,
+        String(r.paidLeaveDays),
+        String(r.unpaidLeaveDays),
+        String(r.absentDays),
+        `-SAR ${(r.leaveDeduction + r.absenceDeduction).toLocaleString()}`,
+        `SAR ${r.finalSalary.toLocaleString()}`,
+      ]),
+      theme: "striped",
+      headStyles: { fillColor: [30, 58, 95], textColor: 255, fontSize: 9 },
+      styles: { fontSize: 9, cellPadding: 5 },
+      columnStyles: {
+        0: { fontStyle: "bold" },
+        9: { fontStyle: "bold", halign: "right" },
+      },
+      margin: { left: margin, right: margin },
+    });
+
+    const total = doc.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(140);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Petro Safe Tech — Confidential  |  Page ${i} of ${total}`,
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 20,
+        { align: "center" },
+      );
+    }
+
+    doc.save(`PST_Payroll_${periodText.replace(" ", "_")}.pdf`);
+  }
 
   return (
     <div className="space-y-4">
@@ -91,6 +207,14 @@ export default function PayrollTab({ password, baseUrl, onError }: Props) {
         >
           {loading ? "Calculating..." : "Run Payroll"}
         </button>
+        {hasRun && results.length > 0 && (
+          <button
+            onClick={exportPdf}
+            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50"
+          >
+            Export PDF
+          </button>
+        )}
       </div>
 
       {missingSalary.length > 0 && (
@@ -127,6 +251,7 @@ export default function PayrollTab({ password, baseUrl, onError }: Props) {
                   <th className="p-3 font-medium">OT hrs</th>
                   <th className="p-3 font-medium">OT pay</th>
                   <th className="p-3 font-medium">Leave (paid/unpaid)</th>
+                  <th className="p-3 font-medium">Absent days</th>
                   <th className="p-3 font-medium">Deduction</th>
                   <th className="p-3 font-medium">Final salary</th>
                 </tr>
@@ -139,7 +264,8 @@ export default function PayrollTab({ password, baseUrl, onError }: Props) {
                     <td className="p-3 text-gray-700">{r.totalOtHours}</td>
                     <td className="p-3 text-gray-700">{r.otPay.toLocaleString()}</td>
                     <td className="p-3 text-gray-700">{r.paidLeaveDays} / {r.unpaidLeaveDays}</td>
-                    <td className="p-3 text-red-600">-{r.leaveDeduction.toLocaleString()}</td>
+                    <td className="p-3 text-gray-700">{r.absentDays}</td>
+                    <td className="p-3 text-red-600">-{(r.leaveDeduction + r.absenceDeduction).toLocaleString()}</td>
                     <td className="p-3 font-semibold text-gray-900">
                       SAR {r.finalSalary.toLocaleString()}
                     </td>
@@ -153,7 +279,8 @@ export default function PayrollTab({ password, baseUrl, onError }: Props) {
             Worked hours assume the employee's scheduled break was taken (the kiosk currently
             logs only one check-in and one check-out per day). Overtime on the weekly off day
             counts the entire session as OT. Paid leave = sick/annual; unpaid leave = unpaid,
-            emergency, other.
+            emergency, other. Absent days = elapsed working days with no attendance log and no
+            approved leave request, deducted at the daily rate.
           </p>
         </>
       )}

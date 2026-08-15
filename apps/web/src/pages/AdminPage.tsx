@@ -143,6 +143,10 @@ export default function AdminPage() {
 
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+  // Logs are fetched from a Google-Sheets-backed endpoint, which can fail
+  // for reasons unrelated to the password (e.g. Sheets not configured yet).
+  // Auth is verified separately via /api/admin/login so a Sheets outage
+  // doesn't masquerade as "wrong password" and block the whole session.
   async function fetchLogs(pwd: string) {
     setLoading(true);
     setError("");
@@ -157,15 +161,13 @@ export default function AdminPage() {
         return;
       }
       if (!res.ok) {
-        setError("Failed to load logs");
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to load logs");
         return;
       }
       const data = await res.json();
       setLogs(data.logs ?? []);
       setEmployees(data.employees ?? []);
-      setAuthed(true);
-      setAuthError("");
-      localStorage.setItem(STORAGE_KEY, pwd);
     } catch {
       setError("Network error");
     } finally {
@@ -173,14 +175,39 @@ export default function AdminPage() {
     }
   }
 
+  async function verifyAndLogin(pwd: string) {
+    setLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch(`${baseUrl}/api/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pwd }),
+      });
+      if (!res.ok) {
+        setAuthError(res.status === 401 ? "Invalid password" : "Login failed");
+        setAuthed(false);
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      setAuthed(true);
+      localStorage.setItem(STORAGE_KEY, pwd);
+      await fetchLogs(pwd);
+    } catch {
+      setAuthError("Network error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    if (password) fetchLogs(password);
+    if (password) verifyAndLogin(password);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    fetchLogs(password);
+    verifyAndLogin(password);
   }
 
   function handleLogout() {

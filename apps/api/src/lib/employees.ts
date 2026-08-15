@@ -1,4 +1,4 @@
-import { ensureSheet, readSheet, appendSheetRow, updateSheetRow } from "./googleSheets";
+import { ensureSheet, readSheet, appendSheetRow, updateSheetRow, isGoogleSheetsConfigured } from "./googleSheets";
 
 export type EmployeeRole = "sales" | "purchase" | "shop_handler" | "manager" | "other";
 
@@ -90,6 +90,11 @@ function employeeToRow(e: Employee): string[] {
 }
 
 async function loadAllEmployees(sheetId: string): Promise<Employee[]> {
+  // No Google Sheets configured — serve the seed list directly rather than
+  // failing outright, so the kiosk and admin employee list still work
+  // locally before a Sheet is connected.
+  if (!isGoogleSheetsConfigured()) return [...SEED_EMPLOYEES];
+
   await ensureSheet(sheetId, SHEET_NAME, HEADERS);
   const rows = await readSheet(sheetId, SHEET_NAME, NUM_COLS);
 

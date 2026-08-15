@@ -3,7 +3,18 @@ import { logger } from "./logger";
 
 type SheetsClient = sheets_v4.Sheets;
 
+// Reused across calls (and across requests, for the life of the process) so
+// the underlying google-auth-library JWT client can cache and reuse its
+// OAuth access token instead of re-signing a JWT and round-tripping to
+// Google's token endpoint on every single Sheets call. Building a fresh
+// GoogleAuth/JWT per call was the main cause of slow admin page loads —
+// each Sheets read fanned out into several of these round trips.
+let authClient: InstanceType<typeof google.auth.GoogleAuth> | null = null;
+let sheetsClient: SheetsClient | null = null;
+
 function getAuthClient() {
+  if (authClient) return authClient;
+
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const rawKey = process.env.GOOGLE_PRIVATE_KEY;
 
@@ -18,17 +29,27 @@ function getAuthClient() {
     privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----\n`;
   }
 
-  const auth = new google.auth.GoogleAuth({
+  authClient = new google.auth.GoogleAuth({
     credentials: { client_email: clientEmail, private_key: privateKey },
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
 
-  return auth;
+  return authClient;
+}
+
+export function isGoogleSheetsConfigured(): boolean {
+  return Boolean(
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+      process.env.GOOGLE_PRIVATE_KEY &&
+      process.env.GOOGLE_SHEET_ID,
+  );
 }
 
 export function getSheetsClient(): SheetsClient {
+  if (sheetsClient) return sheetsClient;
   const auth = getAuthClient();
-  return google.sheets({ version: "v4", auth });
+  sheetsClient = google.sheets({ version: "v4", auth });
+  return sheetsClient;
 }
 
 async function getFirstSheetName(sheets: SheetsClient, sheetId: string): Promise<string> {
@@ -46,11 +67,21 @@ async function listSheetTitles(sheets: SheetsClient, sheetId: string): Promise<s
     .filter((t): t is string => !!t);
 }
 
+// Sheets already confirmed to exist (with headers) this process — skips the
+// two verification round trips (list tabs + read header row) on every
+// subsequent read once a sheet has been ensured once. Tab/header structure
+// only changes via this app's own admin actions below, so it's safe to
+// treat "ensured" as durable for the life of the process.
+const ensuredSheets = new Set<string>();
+
 export async function ensureSheet(
   sheetId: string,
   sheetName: string,
   headers: string[],
 ): Promise<void> {
+  const cacheKey = `${sheetId}:${sheetName}`;
+  if (ensuredSheets.has(cacheKey)) return;
+
   const sheets = getSheetsClient();
   const titles = await listSheetTitles(sheets, sheetId);
 
@@ -81,6 +112,8 @@ export async function ensureSheet(
     });
     logger.info({ sheetName }, "Sheet headers initialized");
   }
+
+  ensuredSheets.add(cacheKey);
 }
 
 export async function readSheet(
