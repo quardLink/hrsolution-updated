@@ -27,7 +27,7 @@ const EMPTY_FORM: EmployeeFormValues = {
 const fieldClass = "w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 export default function EmployeeFormModal({ editing, roles, onClose, onSave }: Props) {
-  const [form, setForm] = useState<EmployeeFormValues>(editing ? { ...editing } : EMPTY_FORM);
+  const [form, setForm] = useState<EmployeeFormValues>(editing ? { ...editing, pin: "" } : EMPTY_FORM);
   const [salaryText, setSalaryText] = useState(
     editing && editing.monthlySalary !== 0 ? String(editing.monthlySalary) : "",
   );
@@ -77,14 +77,17 @@ export default function EmployeeFormModal({ editing, roles, onClose, onSave }: P
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground/90 mb-1">PIN (4 digits) *</label>
+            <label className="block text-sm font-medium text-foreground/90 mb-1">
+              {editing ? "New PIN (4 digits)" : "PIN (4 digits) *"}
+            </label>
             <input
               type="text"
-              required
+              required={!editing}
               inputMode="numeric"
               pattern="[0-9]{4}"
               maxLength={4}
               value={form.pin}
+              placeholder={editing ? "Leave blank to keep current PIN" : undefined}
               onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, "") })}
               className={`${fieldClass} font-mono tracking-widest`}
             />

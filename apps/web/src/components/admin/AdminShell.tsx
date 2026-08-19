@@ -34,6 +34,8 @@ interface Props {
   onRefresh: () => void;
   onTestSound: () => void;
   loading?: boolean;
+  orgName?: string;
+  logoDataUrl?: string | null;
   children: ReactNode;
 }
 
@@ -44,6 +46,8 @@ export default function AdminShell({
   onRefresh,
   onTestSound,
   loading,
+  orgName,
+  logoDataUrl,
   children,
 }: Props) {
   return (
@@ -52,10 +56,12 @@ export default function AdminShell({
         <div className="max-w-6xl mx-auto px-4 lg:px-6">
           <div className="h-14 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center p-1 flex-shrink-0">
-                <img src="/logo.jpg" alt="PST Logo" className="w-full h-full object-contain" />
-              </div>
-              <span className="font-semibold text-foreground text-sm truncate">Petro Safe Tech</span>
+              {logoDataUrl && (
+                <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center p-1 flex-shrink-0">
+                  <img src={logoDataUrl} alt="" className="w-full h-full object-contain" />
+                </div>
+              )}
+              <span className="font-semibold text-foreground text-sm truncate">{orgName || "Your Firm"}</span>
             </div>
 
             <div className="flex items-center gap-0.5">

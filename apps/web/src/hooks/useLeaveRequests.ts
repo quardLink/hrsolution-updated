@@ -31,7 +31,7 @@ export interface NewLeaveRequestInput {
 }
 
 export function useLeaveRequests() {
-  const { password, baseUrl, onError } = useAdminApi();
+  const { baseUrl, onError } = useAdminApi();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [employees, setEmployees] = useState<ActiveEmployee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,8 +40,8 @@ export function useLeaveRequests() {
     setLoading(true);
     try {
       const [reqRes, empRes] = await Promise.all([
-        fetch(`${baseUrl}/api/admin/leave-requests`, { headers: { "x-admin-password": password } }),
-        fetch(`${baseUrl}/api/admin/employees`, { headers: { "x-admin-password": password } }),
+        fetch(`${baseUrl}/api/admin/leave-requests`, { credentials: "include" }),
+        fetch(`${baseUrl}/api/admin/employees`, { credentials: "include" }),
       ]);
       if (!reqRes.ok || !empRes.ok) {
         onError("Failed to load leave requests");
@@ -74,7 +74,6 @@ export function useLeaveRequests() {
     }
     try {
       await adminFetch(baseUrl, "/api/admin/leave-requests", {
-        password,
         method: "POST",
         body: input,
         errorMessage: "Failed to create leave request",
@@ -90,7 +89,6 @@ export function useLeaveRequests() {
   async function updateStatus(id: string, status: "approved" | "rejected") {
     try {
       await adminFetch(baseUrl, `/api/admin/leave-requests/${id}`, {
-        password,
         method: "PATCH",
         body: { status, reviewedBy: "admin" },
         errorMessage: "Failed to update request",

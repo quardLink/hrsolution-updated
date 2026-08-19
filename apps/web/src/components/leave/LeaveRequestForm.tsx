@@ -10,6 +10,7 @@ interface PublicEmployee {
 
 interface Props {
   baseUrl: string;
+  orgSlug: string;
   employees: PublicEmployee[];
   loadingEmps: boolean;
   loadError: string | null;
@@ -19,7 +20,7 @@ interface Props {
 const fieldClass =
   "w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-primary/50";
 
-export default function LeaveRequestForm({ baseUrl, employees, loadingEmps, loadError, onSuccess }: Props) {
+export default function LeaveRequestForm({ baseUrl, orgSlug, employees, loadingEmps, loadError, onSuccess }: Props) {
   const [employeeId, setEmployeeId] = useState("");
   const [pin, setPin] = useState("");
   const [type, setType] = useState("annual");
@@ -48,7 +49,7 @@ export default function LeaveRequestForm({ baseUrl, employees, loadingEmps, load
       const res = await fetch(`${baseUrl}/api/leave/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId, pin, fromDate, toDate, type, reason }),
+        body: JSON.stringify({ orgSlug, employeeId, pin, fromDate, toDate, type, reason }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

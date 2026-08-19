@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useListEmployees, useLogAttendance } from "@workspace/api-client";
+import { isDeviceNotPaired } from "../lib/deviceAuth";
 
 export type Step = "splash" | "action" | "employee" | "pin" | "result";
 export type Action = "checkin" | "checkout";
@@ -45,8 +46,10 @@ export function useAttendanceWizard() {
   const [pinError, setPinError] = useState<string>("");
   const [result, setResult] = useState<AttendanceResult | null>(null);
 
-  const { data: employees } = useListEmployees();
+  const { data: employees, error: employeesError } = useListEmployees();
   const logAttendanceMutation = useLogAttendance();
+
+  const devicePaired = !isDeviceNotPaired(employeesError);
 
   // Splash screen auto-advance
   useEffect(() => {
@@ -124,9 +127,9 @@ export function useAttendanceWizard() {
       setStep("result");
     } catch (err: unknown) {
       let msg = "Something went wrong. Please try again.";
-      if (err && typeof err === "object" && "response" in err) {
-        const response = (err as { response?: { data?: { error?: string } } }).response;
-        if (response?.data?.error) msg = response.data.error;
+      if (err && typeof err === "object") {
+        const data = (err as { data?: { error?: string } }).data;
+        if (data?.error) msg = data.error;
       }
       setPinError(msg);
       setPin("");
@@ -153,6 +156,7 @@ export function useAttendanceWizard() {
     pinError,
     result,
     employees,
+    devicePaired,
     logAttendanceMutation,
     handleActionSelect,
     handleEmployeeSelect,

@@ -1,11 +1,13 @@
-import { ensureSheet, readSheet, appendSheetRow, updateSheetRow, isGoogleSheetsConfigured } from "./googleSheets";
+import { and, eq } from "drizzle-orm";
+import { getDb, schema } from "../db/client";
+import { hashSecret, verifySecret } from "./crypto";
 
-export type EmployeeRole = "sales" | "purchase" | "shop_handler" | "manager" | "other";
+// Roles are per-org and admin-editable (see roles.ts) — not a fixed union.
+export type EmployeeRole = string;
 
 export interface Employee {
-  id: string;
+  id: string; // the human-facing "EMP001" style code
   name: string;
-  pin: string;
   role: EmployeeRole;
   active: boolean;
   useCustomSchedule: boolean;
@@ -24,100 +26,25 @@ export interface PublicEmployee {
   reportingAfternoon: string;
 }
 
-const SHEET_NAME = "Employees";
-const HEADERS = [
-  "ID",
-  "Name",
-  "PIN",
-  "Role",
-  "Active",
-  "UseCustomSchedule",
-  "MorningStart",
-  "MorningEnd",
-  "AfternoonStart",
-  "AfternoonEnd",
-  "MonthlySalary",
-];
-const NUM_COLS = HEADERS.length;
-
-// Initial seed data — 7 PST employees
-// NOTE: monthlySalary values below are PLACEHOLDERS (0) — set real salaries
-// via the admin Employees tab before running payroll for the first time.
-const SEED_EMPLOYEES: Employee[] = [
-  { id: "EMP001", name: "Shaheen", pin: "4758", role: "purchase", active: true, useCustomSchedule: false, morningStart: "08:00", morningEnd: "13:30", afternoonStart: "16:00", afternoonEnd: "19:00", monthlySalary: 0 },
-  { id: "EMP002", name: "Shihab", pin: "7574", role: "shop_handler", active: true, useCustomSchedule: true, morningStart: "09:00", morningEnd: "13:30", afternoonStart: "16:00", afternoonEnd: "19:00", monthlySalary: 0 },
-  { id: "EMP003", name: "Willy", pin: "6376", role: "manager", active: true, useCustomSchedule: true, morningStart: "00:00", morningEnd: "23:59", afternoonStart: "00:00", afternoonEnd: "23:59", monthlySalary: 0 },
-  { id: "EMP004", name: "Yaseen", pin: "4848", role: "sales", active: true, useCustomSchedule: false, morningStart: "08:00", morningEnd: "13:30", afternoonStart: "16:00", afternoonEnd: "19:00", monthlySalary: 0 },
-  { id: "EMP005", name: "Jessa", pin: "1774", role: "shop_handler", active: true, useCustomSchedule: true, morningStart: "09:00", morningEnd: "13:30", afternoonStart: "16:00", afternoonEnd: "19:00", monthlySalary: 0 },
-  { id: "EMP006", name: "Shakir", pin: "5838", role: "purchase", active: true, useCustomSchedule: false, morningStart: "08:00", morningEnd: "13:30", afternoonStart: "16:00", afternoonEnd: "19:00", monthlySalary: 0 },
-  { id: "EMP007", name: "Shamseer", pin: "8589", role: "sales", active: true, useCustomSchedule: false, morningStart: "08:00", morningEnd: "13:30", afternoonStart: "16:00", afternoonEnd: "19:00", monthlySalary: 0 },
-];
-
-let cached: { data: Employee[]; ts: number } | null = null;
-const CACHE_MS = 30 * 1000;
-
-function rowToEmployee(r: string[]): Employee | null {
-  if (!r[0] || !r[1]) return null;
+function toEmployee(row: typeof schema.employees.$inferSelect): Employee {
   return {
-    id: r[0],
-    name: r[1],
-    pin: r[2] ?? "",
-    role: (r[3] ?? "other") as EmployeeRole,
-    active: (r[4] ?? "TRUE").toUpperCase() !== "FALSE",
-    useCustomSchedule: (r[5] ?? "FALSE").toUpperCase() === "TRUE",
-    morningStart: r[6] ?? "08:00",
-    morningEnd: r[7] ?? "13:30",
-    afternoonStart: r[8] ?? "16:00",
-    afternoonEnd: r[9] ?? "19:00",
-    monthlySalary: Number(r[10] ?? 0) || 0,
+    id: row.code,
+    name: row.name,
+    role: row.role,
+    active: row.active,
+    useCustomSchedule: row.useCustomSchedule,
+    morningStart: row.morningStart,
+    morningEnd: row.morningEnd,
+    afternoonStart: row.afternoonStart,
+    afternoonEnd: row.afternoonEnd,
+    monthlySalary: Number(row.monthlySalary),
   };
 }
 
-function employeeToRow(e: Employee): string[] {
-  return [
-    e.id,
-    e.name,
-    e.pin,
-    e.role,
-    e.active ? "TRUE" : "FALSE",
-    e.useCustomSchedule ? "TRUE" : "FALSE",
-    e.morningStart,
-    e.morningEnd,
-    e.afternoonStart,
-    e.afternoonEnd,
-    String(e.monthlySalary ?? 0),
-  ];
-}
-
-async function loadAllEmployees(sheetId: string): Promise<Employee[]> {
-  // No Google Sheets configured — serve the seed list directly rather than
-  // failing outright, so the kiosk and admin employee list still work
-  // locally before a Sheet is connected.
-  if (!isGoogleSheetsConfigured()) return [...SEED_EMPLOYEES];
-
-  await ensureSheet(sheetId, SHEET_NAME, HEADERS);
-  const rows = await readSheet(sheetId, SHEET_NAME, NUM_COLS);
-
-  // Seed if sheet is empty
-  if (rows.length === 0) {
-    for (const e of SEED_EMPLOYEES) {
-      await appendSheetRow(sheetId, SHEET_NAME, NUM_COLS, employeeToRow(e));
-    }
-    return [...SEED_EMPLOYEES];
-  }
-
-  return rows.map(rowToEmployee).filter((e): e is Employee => e !== null);
-}
-
-export async function getAllEmployees(sheetId: string): Promise<Employee[]> {
-  if (cached && Date.now() - cached.ts < CACHE_MS) return cached.data;
-  const data = await loadAllEmployees(sheetId);
-  cached = { data, ts: Date.now() };
-  return data;
-}
-
-export function clearEmployeeCache(): void {
-  cached = null;
+export async function getAllEmployees(orgId: string): Promise<Employee[]> {
+  const db = getDb();
+  const rows = await db.query.employees.findMany({ where: eq(schema.employees.orgId, orgId) });
+  return rows.map(toEmployee);
 }
 
 // ============================================================
@@ -151,10 +78,10 @@ export function getEffectiveSchedule(
 // ============================================================
 
 export async function getPublicEmployees(
-  sheetId: string,
+  orgId: string,
   defaults: EffectiveSchedule,
 ): Promise<PublicEmployee[]> {
-  const all = await getAllEmployees(sheetId);
+  const all = await getAllEmployees(orgId);
   return all
     .filter((e) => e.active)
     .map((e) => {
@@ -174,14 +101,17 @@ export async function getPublicEmployees(
 // ============================================================
 
 export async function verifyEmployee(
-  sheetId: string,
+  orgId: string,
   employeeId: string,
   pin: string,
 ): Promise<Employee | null> {
-  const all = await getAllEmployees(sheetId);
-  const e = all.find((x) => x.id === employeeId && x.active);
-  if (!e || e.pin !== pin) return null;
-  return e;
+  const db = getDb();
+  const row = await db.query.employees.findFirst({
+    where: and(eq(schema.employees.orgId, orgId), eq(schema.employees.code, employeeId)),
+  });
+  if (!row || !row.active) return null;
+  if (!verifySecret(pin, row.pinHash)) return null;
+  return toEmployee(row);
 }
 
 // ============================================================
@@ -189,49 +119,70 @@ export async function verifyEmployee(
 // ============================================================
 
 export async function addEmployee(
-  sheetId: string,
-  emp: Omit<Employee, "id"> & { id?: string },
+  orgId: string,
+  emp: Omit<Employee, "id"> & { id?: string; pin: string },
 ): Promise<Employee> {
-  const all = await loadAllEmployees(sheetId);
+  const db = getDb();
+  const all = await db.query.employees.findMany({ where: eq(schema.employees.orgId, orgId) });
 
-  // Generate next ID if not provided
-  let id = emp.id;
-  if (!id) {
+  let code = emp.id;
+  if (!code) {
     const maxNum = all.reduce((max, e) => {
-      const m = e.id.match(/^EMP(\d+)$/);
+      const m = e.code.match(/^EMP(\d+)$/);
       return m ? Math.max(max, parseInt(m[1])) : max;
     }, 0);
-    id = `EMP${String(maxNum + 1).padStart(3, "0")}`;
+    code = `EMP${String(maxNum + 1).padStart(3, "0")}`;
+  }
+  if (all.some((e) => e.code === code)) {
+    throw new Error(`Employee with ID ${code} already exists`);
   }
 
-  if (all.some((e) => e.id === id)) {
-    throw new Error(`Employee with ID ${id} already exists`);
-  }
+  const [row] = await db
+    .insert(schema.employees)
+    .values({
+      orgId,
+      code,
+      name: emp.name,
+      pinHash: hashSecret(emp.pin),
+      role: emp.role,
+      active: emp.active,
+      useCustomSchedule: emp.useCustomSchedule,
+      morningStart: emp.morningStart,
+      morningEnd: emp.morningEnd,
+      afternoonStart: emp.afternoonStart,
+      afternoonEnd: emp.afternoonEnd,
+      monthlySalary: String(emp.monthlySalary ?? 0),
+    })
+    .returning();
 
-  const newEmp: Employee = { ...emp, id };
-  await appendSheetRow(sheetId, SHEET_NAME, NUM_COLS, employeeToRow(newEmp));
-  clearEmployeeCache();
-  return newEmp;
+  return toEmployee(row);
 }
 
 export async function updateEmployee(
-  sheetId: string,
+  orgId: string,
   id: string,
-  updates: Partial<Omit<Employee, "id">>,
+  updates: Partial<Omit<Employee, "id">> & { pin?: string },
 ): Promise<Employee> {
-  const all = await loadAllEmployees(sheetId);
-  const idx = all.findIndex((e) => e.id === id);
-  if (idx < 0) throw new Error(`Employee ${id} not found`);
+  const db = getDb();
+  const { pin, monthlySalary, ...rest } = updates;
 
-  const updated: Employee = { ...all[idx], ...updates };
-  await updateSheetRow(sheetId, SHEET_NAME, idx + 2, NUM_COLS, employeeToRow(updated));
-  clearEmployeeCache();
-  return updated;
+  const values: Partial<typeof schema.employees.$inferInsert> = { ...rest };
+  if (pin) values.pinHash = hashSecret(pin);
+  if (monthlySalary !== undefined) values.monthlySalary = String(monthlySalary);
+
+  const [updated] = await db
+    .update(schema.employees)
+    .set(values)
+    .where(and(eq(schema.employees.orgId, orgId), eq(schema.employees.code, id)))
+    .returning();
+
+  if (!updated) throw new Error(`Employee ${id} not found`);
+  return toEmployee(updated);
 }
 
-export async function deleteEmployee(sheetId: string, id: string): Promise<void> {
+export async function deleteEmployee(orgId: string, id: string): Promise<void> {
   // Soft delete — set active=false to preserve attendance history integrity
-  await updateEmployee(sheetId, id, { active: false });
+  await updateEmployee(orgId, id, { active: false });
 }
 
 // ============================================================

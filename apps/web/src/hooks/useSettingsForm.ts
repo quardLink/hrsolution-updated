@@ -9,13 +9,15 @@ export interface OfficeSettings {
   lunchBreakEnd: string;
   companyName: string;
   lateThresholdMinutes: string;
-  hasCustomAdminPassword?: boolean;
 }
 
 // Shared by the General and Working Hours settings panels — both just edit
-// different subsets of the same draft/save-bar flow.
+// different subsets of the same draft/save-bar flow. companyName actually
+// lives on the org record (/api/auth/org), not the settings table, but is
+// folded into this same draft/save flow so the General panel doesn't need
+// its own separate save button.
 export function useSettingsForm() {
-  const { password, baseUrl, onError } = useAdminApi();
+  const { baseUrl, onError } = useAdminApi();
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [draft, setDraft] = useState<OfficeSettings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,14 +27,19 @@ export function useSettingsForm() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`${baseUrl}/api/admin/settings`, { headers: { "x-admin-password": password } });
-      if (!res.ok) {
+      const [settingsRes, meRes] = await Promise.all([
+        fetch(`${baseUrl}/api/admin/settings`, { credentials: "include" }),
+        fetch(`${baseUrl}/api/auth/me`, { credentials: "include" }),
+      ]);
+      if (!settingsRes.ok || !meRes.ok) {
         onError("Failed to load settings");
         return;
       }
-      const data = await res.json();
-      setSettings(data.settings);
-      setDraft(data.settings);
+      const settingsData = await settingsRes.json();
+      const meData = await meRes.json();
+      const merged: OfficeSettings = { ...settingsData.settings, companyName: meData.org?.name ?? "" };
+      setSettings(merged);
+      setDraft(merged);
     } catch {
       onError("Network error");
     } finally {
@@ -47,21 +54,34 @@ export function useSettingsForm() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!draft) return;
+    if (!draft || !settings) return;
     setSaving(true);
     try {
-      const res = await fetch(`${baseUrl}/api/admin/settings`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-admin-password": password },
-        body: JSON.stringify(draft),
-      });
-      if (!res.ok) {
+      const { companyName, ...officeFields } = draft;
+      const requests: Promise<Response>[] = [
+        fetch(`${baseUrl}/api/admin/settings`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(officeFields),
+        }),
+      ];
+      if (companyName !== settings.companyName) {
+        requests.push(
+          fetch(`${baseUrl}/api/auth/org`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: companyName }),
+          }),
+        );
+      }
+      const results = await Promise.all(requests);
+      if (results.some((r) => !r.ok)) {
         onError("Failed to save settings");
         return;
       }
-      const data = await res.json();
-      setSettings(data.settings);
-      setDraft(data.settings);
+      setSettings(draft);
       setSavedAt(Date.now());
       setTimeout(() => setSavedAt(null), 3000);
     } catch {

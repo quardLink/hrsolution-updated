@@ -1,19 +1,38 @@
 import { Router, type IRouter } from "express";
 import { getPublicEmployees, verifyEmployee, getAttendanceStatus } from "../lib/employees";
 import { getOfficeSettings } from "../lib/settings";
-import { appendAttendanceRow, ensureSheetHeaders, isGoogleSheetsConfigured } from "../lib/googleSheets";
+import { appendAttendanceRow } from "../lib/attendanceLogs";
+import { getOrgById } from "../lib/orgs";
+import { requireDeviceToken } from "../lib/devices";
 import { LogAttendanceBody } from "@workspace/api-schema";
 
 const router: IRouter = Router();
 
-router.get("/attendance/employees", async (_req, res): Promise<void> => {
-  // Empty string is a safe placeholder here — getOfficeSettings/getPublicEmployees
-  // fall back to local defaults/seed data without touching it when Google
-  // Sheets isn't configured (see isGoogleSheetsConfigured in googleSheets.ts).
-  const sheetId = process.env.GOOGLE_SHEET_ID ?? "";
+// Every route below requires a valid, unrevoked device token — this is
+// what makes attendance impossible to fake from outside the paired kiosk.
+// A device token only exists after an admin generates a pairing code in
+// Settings and someone standing at the physical machine redeems it.
+//
+// Applied per-route (not via a blanket router.use()) — this router is
+// mounted with no path prefix in routes/index.ts (matching every other
+// router in this app), so an unconditional router.use() here would run
+// for every request that reaches this router in the middleware chain,
+// including ones headed for /api/admin/* or /api/leave/* routes mounted
+// after it.
+
+router.get("/attendance/org-info", requireDeviceToken, async (req, res): Promise<void> => {
+  const org = await getOrgById(req.orgId!);
+  if (!org) {
+    res.status(404).json({ error: "Firm not found" });
+    return;
+  }
+  res.json({ name: org.name, logoDataUrl: org.logoDataUrl });
+});
+
+router.get("/attendance/employees", requireDeviceToken, async (req, res): Promise<void> => {
   try {
-    const settings = await getOfficeSettings(sheetId);
-    const employees = await getPublicEmployees(sheetId, {
+    const settings = await getOfficeSettings(req.orgId!);
+    const employees = await getPublicEmployees(req.orgId!, {
       morningStart: settings.defaultMorningStart,
       morningEnd: settings.defaultMorningEnd,
       afternoonStart: settings.defaultAfternoonStart,
@@ -21,12 +40,12 @@ router.get("/attendance/employees", async (_req, res): Promise<void> => {
     });
     res.json(employees);
   } catch (err) {
-    _req.log.error({ err }, "Failed to load employees");
+    req.log.error({ err }, "Failed to load employees");
     res.status(500).json({ error: "Failed to load employees" });
   }
 });
 
-router.post("/attendance/log", async (req, res): Promise<void> => {
+router.post("/attendance/log", requireDeviceToken, async (req, res): Promise<void> => {
   const parsed = LogAttendanceBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -34,11 +53,9 @@ router.post("/attendance/log", async (req, res): Promise<void> => {
   }
 
   const { employeeId, pin, action, session } = parsed.data;
+  const orgId = req.orgId!;
 
-  // Same local-fallback rationale as the /attendance/employees route above.
-  const sheetId = process.env.GOOGLE_SHEET_ID ?? "";
-
-  const employee = await verifyEmployee(sheetId, employeeId, pin);
+  const employee = await verifyEmployee(orgId, employeeId, pin);
   if (!employee) {
     res.status(400).json({ error: "Invalid employee or PIN. Please try again." });
     return;
@@ -75,22 +92,20 @@ router.post("/attendance/log", async (req, res): Promise<void> => {
     hour12: true,
   });
 
-  if (isGoogleSheetsConfigured()) {
-    try {
-      await ensureSheetHeaders(sheetId);
-      await appendAttendanceRow({
-        sheetId,
-        employeeName: employee.name,
-        employeeId: employee.id,
-        action,
-        session,
-        timestamp,
-        status,
-        message,
-      });
-    } catch (err) {
-      req.log.error({ err }, "Failed to write to Google Sheets");
-    }
+  try {
+    await appendAttendanceRow({
+      orgId,
+      employeeName: employee.name,
+      employeeId: employee.id,
+      action,
+      session,
+      timestamp,
+      status,
+      message,
+      deviceId: req.deviceId,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to write attendance log");
   }
 
   res.json({

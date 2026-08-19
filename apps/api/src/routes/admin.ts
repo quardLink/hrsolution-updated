@@ -1,5 +1,5 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { getAttendanceLogs } from "../lib/googleSheets";
+import { Router, type IRouter } from "express";
+import { getAttendanceLogs } from "../lib/attendanceLogs";
 import {
   getAllEmployees,
   addEmployee,
@@ -16,84 +16,24 @@ import {
   updateLeaveRequest,
 } from "../lib/leaveRequests";
 import { getAllRoles, addRole, updateRole, deleteRole } from "../lib/roles";
-import { verifyAdminPassword, setAdminPassword } from "../lib/adminPassword";
 import { calculateMonthlyPayroll } from "../lib/payroll";
 import { runDailyPayrollJob } from "../lib/payrollDailyJob";
+import { requireOrgSession } from "../lib/session";
 
 const router: IRouter = Router();
-
-async function checkAdminAuth(req: Request): Promise<boolean> {
-  const provided = req.headers["x-admin-password"];
-  const passwordValue = Array.isArray(provided) ? provided[0] : provided;
-  if (!passwordValue || typeof passwordValue !== "string") return false;
-  return verifyAdminPassword(process.env.GOOGLE_SHEET_ID, passwordValue);
-}
-
-async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const ok = await checkAdminAuth(req);
-  if (!ok) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  next();
-}
-
-function requireSheetId(res: Response): string | null {
-  const sheetId = process.env.GOOGLE_SHEET_ID;
-  if (!sheetId) {
-    res.status(500).json({ error: "Google Sheets not configured" });
-    return null;
-  }
-  return sheetId;
-}
-
-// ============================================================
-// Auth
-// ============================================================
-
-router.post("/admin/login", async (req, res): Promise<void> => {
-  const { password } = req.body ?? {};
-  if (typeof password !== "string") {
-    res.status(400).json({ error: "Password required" });
-    return;
-  }
-  const ok = await verifyAdminPassword(process.env.GOOGLE_SHEET_ID, password);
-  if (!ok) {
-    res.status(401).json({ error: "Invalid password" });
-    return;
-  }
-  res.json({ success: true });
-});
-
-router.patch("/admin/password", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
-  const { oldPassword, newPassword } = req.body ?? {};
-  if (typeof oldPassword !== "string" || typeof newPassword !== "string") {
-    res.status(400).json({ error: "oldPassword and newPassword are required" });
-    return;
-  }
-  try {
-    await setAdminPassword(sheetId, oldPassword, newPassword);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : "Failed to change password" });
-  }
-});
+router.use(requireOrgSession);
 
 // ============================================================
 // Logs
 // ============================================================
 
-router.get("/admin/logs", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
-
+router.get("/admin/logs", async (req, res): Promise<void> => {
+  const orgId = req.orgId!;
   try {
     const [logs, employees, settings] = await Promise.all([
-      getAttendanceLogs(sheetId),
-      getAllEmployees(sheetId),
-      getOfficeSettings(sheetId),
+      getAttendanceLogs(orgId),
+      getAllEmployees(orgId),
+      getOfficeSettings(orgId),
     ]);
 
     const defaults = {
@@ -128,11 +68,9 @@ router.get("/admin/logs", requireAdmin, async (req, res): Promise<void> => {
 // Employees CRUD
 // ============================================================
 
-router.get("/admin/employees", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.get("/admin/employees", async (req, res): Promise<void> => {
   try {
-    const employees = await getAllEmployees(sheetId);
+    const employees = await getAllEmployees(req.orgId!);
     res.json({ employees });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch employees");
@@ -140,16 +78,14 @@ router.get("/admin/employees", requireAdmin, async (req, res): Promise<void> => 
   }
 });
 
-router.post("/admin/employees", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.post("/admin/employees", async (req, res): Promise<void> => {
   try {
     const body = req.body ?? {};
     if (!body.name || !body.pin) {
       res.status(400).json({ error: "Name and PIN are required" });
       return;
     }
-    const created = await addEmployee(sheetId, {
+    const created = await addEmployee(req.orgId!, {
       id: body.id,
       name: String(body.name).trim(),
       pin: String(body.pin).trim(),
@@ -169,14 +105,12 @@ router.post("/admin/employees", requireAdmin, async (req, res): Promise<void> =>
   }
 });
 
-router.patch("/admin/employees/:id", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.patch("/admin/employees/:id", async (req, res): Promise<void> => {
   try {
     const body = req.body ?? {};
-    const updates: Partial<Omit<Employee, "id">> = {};
+    const updates: Partial<Omit<Employee, "id">> & { pin?: string } = {};
     if (body.name !== undefined) updates.name = String(body.name).trim();
-    if (body.pin !== undefined) updates.pin = String(body.pin).trim();
+    if (body.pin) updates.pin = String(body.pin).trim();
     if (body.role !== undefined) updates.role = body.role as EmployeeRole;
     if (body.active !== undefined) updates.active = !!body.active;
     if (body.useCustomSchedule !== undefined) updates.useCustomSchedule = !!body.useCustomSchedule;
@@ -186,7 +120,7 @@ router.patch("/admin/employees/:id", requireAdmin, async (req, res): Promise<voi
     if (body.afternoonEnd !== undefined) updates.afternoonEnd = String(body.afternoonEnd);
     if (body.monthlySalary !== undefined) updates.monthlySalary = Number(body.monthlySalary) || 0;
 
-    const updated = await updateEmployee(sheetId, String(req.params.id), updates);
+    const updated = await updateEmployee(req.orgId!, String(req.params.id), updates);
     res.json({ employee: updated });
   } catch (err) {
     req.log.error({ err }, "Failed to update employee");
@@ -194,11 +128,9 @@ router.patch("/admin/employees/:id", requireAdmin, async (req, res): Promise<voi
   }
 });
 
-router.delete("/admin/employees/:id", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.delete("/admin/employees/:id", async (req, res): Promise<void> => {
   try {
-    await deleteEmployee(sheetId, String(req.params.id));
+    await deleteEmployee(req.orgId!, String(req.params.id));
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to delete employee");
@@ -210,32 +142,20 @@ router.delete("/admin/employees/:id", requireAdmin, async (req, res): Promise<vo
 // Settings
 // ============================================================
 
-router.get("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.get("/admin/settings", async (req, res): Promise<void> => {
   try {
-    const settings = await getOfficeSettings(sheetId);
-    // Don't leak the password hash to the client
-    const { adminPasswordHash, ...safe } = settings;
-    void adminPasswordHash;
-    res.json({ settings: { ...safe, hasCustomAdminPassword: !!adminPasswordHash } });
+    const settings = await getOfficeSettings(req.orgId!);
+    res.json({ settings });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch settings");
     res.status(500).json({ error: "Failed to fetch settings" });
   }
 });
 
-router.patch("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.patch("/admin/settings", async (req, res): Promise<void> => {
   try {
-    // Strip protected fields — password updates go through /admin/password
-    const body = { ...(req.body ?? {}) };
-    delete body.adminPasswordHash;
-    delete body.hasCustomAdminPassword;
-    const updated = await updateOfficeSettings(sheetId, body);
-    const { adminPasswordHash, ...safe } = updated;
-    res.json({ settings: { ...safe, hasCustomAdminPassword: !!adminPasswordHash } });
+    const updated = await updateOfficeSettings(req.orgId!, req.body ?? {});
+    res.json({ settings: updated });
   } catch (err) {
     req.log.error({ err }, "Failed to update settings");
     res.status(500).json({ error: "Failed to update settings" });
@@ -246,11 +166,9 @@ router.patch("/admin/settings", requireAdmin, async (req, res): Promise<void> =>
 // Roles CRUD
 // ============================================================
 
-router.get("/admin/roles", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.get("/admin/roles", async (req, res): Promise<void> => {
   try {
-    const roles = await getAllRoles(sheetId);
+    const roles = await getAllRoles(req.orgId!);
     res.json({ roles });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch roles");
@@ -258,38 +176,32 @@ router.get("/admin/roles", requireAdmin, async (req, res): Promise<void> => {
   }
 });
 
-router.post("/admin/roles", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.post("/admin/roles", async (req, res): Promise<void> => {
   const { value, label } = req.body ?? {};
   if (!value || !label) {
     res.status(400).json({ error: "value and label are required" });
     return;
   }
   try {
-    const role = await addRole(sheetId, { value: String(value), label: String(label) });
+    const role = await addRole(req.orgId!, { value: String(value), label: String(label) });
     res.json({ role });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed to add role" });
   }
 });
 
-router.patch("/admin/roles/:value", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.patch("/admin/roles/:value", async (req, res): Promise<void> => {
   try {
-    const role = await updateRole(sheetId, String(req.params.value), req.body ?? {});
+    const role = await updateRole(req.orgId!, String(req.params.value), req.body ?? {});
     res.json({ role });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed to update role" });
   }
 });
 
-router.delete("/admin/roles/:value", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.delete("/admin/roles/:value", async (req, res): Promise<void> => {
   try {
-    await deleteRole(sheetId, String(req.params.value));
+    await deleteRole(req.orgId!, String(req.params.value));
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed to delete role" });
@@ -300,11 +212,9 @@ router.delete("/admin/roles/:value", requireAdmin, async (req, res): Promise<voi
 // Leave Requests (admin)
 // ============================================================
 
-router.get("/admin/leave-requests", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.get("/admin/leave-requests", async (req, res): Promise<void> => {
   try {
-    const requests = await getAllLeaveRequests(sheetId);
+    const requests = await getAllLeaveRequests(req.orgId!);
     res.json({ requests });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch leave requests");
@@ -312,22 +222,20 @@ router.get("/admin/leave-requests", requireAdmin, async (req, res): Promise<void
   }
 });
 
-router.post("/admin/leave-requests", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.post("/admin/leave-requests", async (req, res): Promise<void> => {
   try {
     const body = req.body ?? {};
     if (!body.employeeId || !body.fromDate || !body.toDate) {
       res.status(400).json({ error: "employeeId, fromDate, and toDate are required" });
       return;
     }
-    const employees = await getAllEmployees(sheetId);
+    const employees = await getAllEmployees(req.orgId!);
     const emp = employees.find((e) => e.id === body.employeeId);
     if (!emp) {
       res.status(400).json({ error: "Unknown employeeId" });
       return;
     }
-    const created = await addLeaveRequest(sheetId, {
+    const created = await addLeaveRequest(req.orgId!, {
       employeeId: body.employeeId,
       employeeName: emp.name,
       fromDate: body.fromDate,
@@ -342,9 +250,7 @@ router.post("/admin/leave-requests", requireAdmin, async (req, res): Promise<voi
   }
 });
 
-router.patch("/admin/leave-requests/:id", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
+router.patch("/admin/leave-requests/:id", async (req, res): Promise<void> => {
   try {
     const body = req.body ?? {};
     const updates: Record<string, string> = {};
@@ -357,7 +263,7 @@ router.patch("/admin/leave-requests/:id", requireAdmin, async (req, res): Promis
     if (body.fromDate !== undefined) updates.fromDate = body.fromDate;
     if (body.toDate !== undefined) updates.toDate = body.toDate;
     if (body.type !== undefined) updates.type = body.type;
-    const updated = await updateLeaveRequest(sheetId, String(req.params.id), updates);
+    const updated = await updateLeaveRequest(req.orgId!, String(req.params.id), updates);
     res.json({ request: updated });
   } catch (err) {
     req.log.error({ err }, "Failed to update leave request");
@@ -369,10 +275,8 @@ router.patch("/admin/leave-requests/:id", requireAdmin, async (req, res): Promis
 // Payroll
 // ============================================================
 
-router.get("/admin/payroll/:employeeId", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
-
+router.get("/admin/payroll/:employeeId", async (req, res): Promise<void> => {
+  const orgId = req.orgId!;
   const year = Number(req.query.year);
   const month = Number(req.query.month); // 1-12
   if (!year || !month) {
@@ -382,10 +286,10 @@ router.get("/admin/payroll/:employeeId", requireAdmin, async (req, res): Promise
 
   try {
     const [employees, logs, leaveRequests, settings] = await Promise.all([
-      getAllEmployees(sheetId),
-      getAttendanceLogs(sheetId),
-      getAllLeaveRequests(sheetId),
-      getOfficeSettings(sheetId),
+      getAllEmployees(orgId),
+      getAttendanceLogs(orgId),
+      getAllLeaveRequests(orgId),
+      getOfficeSettings(orgId),
     ]);
 
     const employee = employees.find((e) => e.id === req.params.employeeId);
@@ -414,10 +318,8 @@ router.get("/admin/payroll/:employeeId", requireAdmin, async (req, res): Promise
   }
 });
 
-router.get("/admin/payroll-summary", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
-
+router.get("/admin/payroll-summary", async (req, res): Promise<void> => {
+  const orgId = req.orgId!;
   const year = Number(req.query.year);
   const month = Number(req.query.month);
   if (!year || !month) {
@@ -427,10 +329,10 @@ router.get("/admin/payroll-summary", requireAdmin, async (req, res): Promise<voi
 
   try {
     const [employees, logs, leaveRequests, settings] = await Promise.all([
-      getAllEmployees(sheetId),
-      getAttendanceLogs(sheetId),
-      getAllLeaveRequests(sheetId),
-      getOfficeSettings(sheetId),
+      getAllEmployees(orgId),
+      getAttendanceLogs(orgId),
+      getAllLeaveRequests(orgId),
+      getOfficeSettings(orgId),
     ]);
 
     const shift = {
@@ -459,10 +361,7 @@ router.get("/admin/payroll-summary", requireAdmin, async (req, res): Promise<voi
   }
 });
 
-router.post("/admin/payroll/run-daily", requireAdmin, async (req, res): Promise<void> => {
-  const sheetId = requireSheetId(res);
-  if (!sheetId) return;
-
+router.post("/admin/payroll/run-daily", async (req, res): Promise<void> => {
   const dateOverride = typeof req.body?.date === "string" ? req.body.date : undefined;
   if (dateOverride && !/^\d{4}-\d{2}-\d{2}$/.test(dateOverride)) {
     res.status(400).json({ error: "date must be in YYYY-MM-DD format" });
@@ -470,7 +369,7 @@ router.post("/admin/payroll/run-daily", requireAdmin, async (req, res): Promise<
   }
 
   try {
-    await runDailyPayrollJob(sheetId, dateOverride);
+    await runDailyPayrollJob(req.orgId!, dateOverride);
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to run daily payroll job");

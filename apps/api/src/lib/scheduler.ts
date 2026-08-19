@@ -1,17 +1,20 @@
 import cron from "node-cron";
 import { runDailyPayrollJob } from "./payrollDailyJob";
 import { logger } from "./logger";
+import { isDbConfigured, getDb } from "../db/client";
 
 export function startScheduledJobs(): void {
   cron.schedule(
     "0 0 * * *",
-    () => {
-      const sheetId = process.env.GOOGLE_SHEET_ID;
-      if (!sheetId) {
-        logger.warn("Skipping scheduled daily payroll job — GOOGLE_SHEET_ID not configured");
+    async () => {
+      if (!isDbConfigured()) {
+        logger.warn("Skipping scheduled daily payroll job — DATABASE_URL not configured");
         return;
       }
-      void runDailyPayrollJob(sheetId);
+      const orgs = await getDb().query.orgs.findMany({ columns: { id: true } });
+      for (const org of orgs) {
+        void runDailyPayrollJob(org.id);
+      }
     },
     { timezone: "Asia/Riyadh" },
   );

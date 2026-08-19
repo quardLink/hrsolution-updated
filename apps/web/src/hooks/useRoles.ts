@@ -8,16 +8,16 @@ export interface Role {
 }
 
 export function useRoles() {
-  const { password, baseUrl, onError } = useAdminApi();
+  const { baseUrl, onError } = useAdminApi();
   const [roles, setRoles] = useState<Role[]>([]);
 
   const reload = useCallback(async () => {
-    const res = await fetch(`${baseUrl}/api/admin/roles`, { headers: { "x-admin-password": password } });
+    const res = await fetch(`${baseUrl}/api/admin/roles`, { credentials: "include" });
     if (res.ok) {
       const data = await res.json();
       setRoles(data.roles ?? []);
     }
-  }, [baseUrl, password]);
+  }, [baseUrl]);
 
   useEffect(() => {
     reload();
@@ -30,7 +30,6 @@ export function useRoles() {
     }
     try {
       await adminFetch(baseUrl, "/api/admin/roles", {
-        password,
         method: "POST",
         body: { value, label },
         errorMessage: "Failed to add role",
@@ -47,7 +46,6 @@ export function useRoles() {
     if (!label) return false;
     try {
       await adminFetch(baseUrl, `/api/admin/roles/${encodeURIComponent(oldValue)}`, {
-        password,
         method: "PATCH",
         body: { label },
         errorMessage: "Failed to update role",
@@ -64,7 +62,6 @@ export function useRoles() {
     if (!confirm(`Remove role "${value}"? Existing employees with this role will keep it but it won't appear in the dropdown.`)) return;
     try {
       await adminFetch(baseUrl, `/api/admin/roles/${encodeURIComponent(value)}`, {
-        password,
         method: "DELETE",
         errorMessage: "Failed to delete role",
       });

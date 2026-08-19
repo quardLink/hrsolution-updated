@@ -5,7 +5,6 @@ import { adminFetch, toErrorMessage } from "../lib/adminApi";
 export interface Employee {
   id: string;
   name: string;
-  pin: string;
   role: string;
   active: boolean;
   useCustomSchedule: boolean;
@@ -21,10 +20,12 @@ export interface EmployeeRole {
   label: string;
 }
 
-export type EmployeeFormValues = Omit<Employee, "id"> & { id: string };
+// pin is write-only: required when creating, optional when editing (blank
+// = keep the existing PIN) — the server never sends real PINs back.
+export type EmployeeFormValues = Omit<Employee, "id"> & { id: string; pin: string };
 
 export function useEmployees() {
-  const { password, baseUrl, onError } = useAdminApi();
+  const { baseUrl, onError } = useAdminApi();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [roles, setRoles] = useState<EmployeeRole[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,8 +34,8 @@ export function useEmployees() {
     setLoading(true);
     try {
       const [empRes, rolesRes] = await Promise.all([
-        fetch(`${baseUrl}/api/admin/employees`, { headers: { "x-admin-password": password } }),
-        fetch(`${baseUrl}/api/admin/roles`, { headers: { "x-admin-password": password } }),
+        fetch(`${baseUrl}/api/admin/employees`, { credentials: "include" }),
+        fetch(`${baseUrl}/api/admin/roles`, { credentials: "include" }),
       ]);
       if (!empRes.ok) {
         onError("Failed to load employees");
@@ -59,21 +60,25 @@ export function useEmployees() {
   }, []);
 
   async function saveEmployee(form: EmployeeFormValues, editing: Employee | null): Promise<boolean> {
-    if (!form.name.trim() || !form.pin.trim()) {
-      onError("Name and PIN are required");
+    if (!form.name.trim()) {
+      onError("Name is required");
       return false;
     }
-    if (!/^\d{4}$/.test(form.pin)) {
+    if (!editing && !form.pin.trim()) {
+      onError("PIN is required");
+      return false;
+    }
+    if (form.pin && !/^\d{4}$/.test(form.pin)) {
       onError("PIN must be exactly 4 digits");
       return false;
     }
     try {
       const path = editing ? `/api/admin/employees/${editing.id}` : `/api/admin/employees`;
-      const body = editing ? { ...form, id: undefined } : form;
+      const body: Partial<EmployeeFormValues> = { ...form, id: undefined };
+      if (!form.pin) delete body.pin;
       await adminFetch(baseUrl, path, {
-        password,
         method: editing ? "PATCH" : "POST",
-        body,
+        body: editing ? body : form,
         errorMessage: "Failed to save employee",
       });
       await load();
@@ -88,7 +93,6 @@ export function useEmployees() {
     if (!confirm(`Deactivate ${emp.name}? They will no longer appear on the keypad. This is reversible.`)) return;
     try {
       await adminFetch(baseUrl, `/api/admin/employees/${emp.id}`, {
-        password,
         method: "DELETE",
         errorMessage: "Failed to deactivate employee",
       });
@@ -101,7 +105,6 @@ export function useEmployees() {
   async function reactivate(emp: Employee) {
     try {
       await adminFetch(baseUrl, `/api/admin/employees/${emp.id}`, {
-        password,
         method: "PATCH",
         body: { active: true },
         errorMessage: "Failed to reactivate employee",

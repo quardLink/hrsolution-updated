@@ -2,7 +2,6 @@ import { createContext, useContext, type ReactNode } from "react";
 
 interface AdminApiValue {
   baseUrl: string;
-  password: string;
   onError: (message: string) => void;
 }
 

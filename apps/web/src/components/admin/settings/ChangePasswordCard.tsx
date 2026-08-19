@@ -2,14 +2,8 @@ import { useState } from "react";
 import { useAdminApi } from "../../../contexts/AdminApiContext";
 import { adminFetch, toErrorMessage } from "../../../lib/adminApi";
 
-interface Props {
-  hasCustomAdminPassword?: boolean;
-  onPasswordChanged?: (newPassword: string) => void;
-  onChanged: () => void;
-}
-
-export default function ChangePasswordCard({ hasCustomAdminPassword, onPasswordChanged, onChanged }: Props) {
-  const { password, baseUrl } = useAdminApi();
+export default function ChangePasswordCard() {
+  const { baseUrl } = useAdminApi();
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -21,8 +15,8 @@ export default function ChangePasswordCard({ hasCustomAdminPassword, onPasswordC
       setPwMsg({ kind: "err", text: "Please fill in all fields" });
       return;
     }
-    if (pwForm.next.length < 6) {
-      setPwMsg({ kind: "err", text: "New password must be at least 6 characters" });
+    if (pwForm.next.length < 8) {
+      setPwMsg({ kind: "err", text: "New password must be at least 8 characters" });
       return;
     }
     if (pwForm.next !== pwForm.confirm) {
@@ -31,17 +25,13 @@ export default function ChangePasswordCard({ hasCustomAdminPassword, onPasswordC
     }
     setPwSaving(true);
     try {
-      await adminFetch(baseUrl, "/api/admin/password", {
-        password,
+      await adminFetch(baseUrl, "/api/auth/password", {
         method: "PATCH",
         body: { oldPassword: pwForm.current, newPassword: pwForm.next },
         errorMessage: "Failed to change password",
       });
       setPwMsg({ kind: "ok", text: "Password changed. Please use the new password next time you sign in." });
       setPwForm({ current: "", next: "", confirm: "" });
-      onPasswordChanged?.(pwForm.next);
-      // Refresh settings to update hasCustomAdminPassword flag
-      onChanged();
     } catch (err) {
       setPwMsg({ kind: "err", text: toErrorMessage(err) });
     } finally {
@@ -55,11 +45,7 @@ export default function ChangePasswordCard({ hasCustomAdminPassword, onPasswordC
       className="bg-card rounded-xl border border-border p-4 lg:p-6"
     >
       <h2 className="text-lg lg:text-xl font-bold text-foreground mb-1">Admin Password</h2>
-      <p className="text-sm text-muted-foreground mb-5">
-        {hasCustomAdminPassword
-          ? "A custom admin password is currently active."
-          : "Currently using the default password. Change it to secure your dashboard."}
-      </p>
+      <p className="text-sm text-muted-foreground mb-5">Used to sign in to this dashboard.</p>
 
       <div className="space-y-4">
         <div>
@@ -81,7 +67,7 @@ export default function ChangePasswordCard({ hasCustomAdminPassword, onPasswordC
             className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             autoComplete="new-password"
           />
-          <p className="text-xs text-muted-foreground mt-1">At least 6 characters.</p>
+          <p className="text-xs text-muted-foreground mt-1">At least 8 characters.</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/90 mb-1">Confirm New Password</label>

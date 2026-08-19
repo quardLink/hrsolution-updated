@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import LeaveRequestForm from "../components/leave/LeaveRequestForm";
 import LeaveRequestSuccess, { type LeaveRequestSuccessData } from "../components/leave/LeaveRequestSuccess";
 
@@ -10,8 +10,10 @@ interface PublicEmployee {
 
 export default function LeavePage() {
   const baseUrl = useMemo(() => import.meta.env.BASE_URL.replace(/\/$/, ""), []);
+  const { orgSlug } = useParams<{ orgSlug: string }>();
 
   const [employees, setEmployees] = useState<PublicEmployee[]>([]);
+  const [orgName, setOrgName] = useState<string>("");
   const [loadingEmps, setLoadingEmps] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [success, setSuccess] = useState<LeaveRequestSuccessData | null>(null);
@@ -20,10 +22,13 @@ export default function LeavePage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${baseUrl}/api/leave/employees`);
+        const res = await fetch(`${baseUrl}/api/leave/employees?org=${encodeURIComponent(orgSlug)}`);
         if (!res.ok) throw new Error("Failed to load employees");
         const data = await res.json();
-        if (!cancelled) setEmployees(data.employees ?? []);
+        if (!cancelled) {
+          setEmployees(data.employees ?? []);
+          setOrgName(data.orgName ?? "");
+        }
       } catch {
         if (!cancelled) setLoadError("Could not load employee list. Please refresh.");
       } finally {
@@ -31,7 +36,7 @@ export default function LeavePage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [baseUrl]);
+  }, [baseUrl, orgSlug]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 sm:py-12">
@@ -51,7 +56,7 @@ export default function LeavePage() {
               </div>
               <div>
                 <h1 className="font-bold text-lg leading-tight">Leave Request</h1>
-                <p className="text-xs text-white/80 mt-0.5">Petro Safe Tech · Saudi Arabia</p>
+                {orgName && <p className="text-xs text-white/80 mt-0.5">{orgName}</p>}
               </div>
             </div>
           </div>
@@ -61,6 +66,7 @@ export default function LeavePage() {
           ) : (
             <LeaveRequestForm
               baseUrl={baseUrl}
+              orgSlug={orgSlug}
               employees={employees}
               loadingEmps={loadingEmps}
               loadError={loadError}

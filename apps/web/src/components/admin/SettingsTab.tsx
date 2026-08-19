@@ -6,23 +6,21 @@ import SettingsHoursPanel from "./settings/SettingsHoursPanel";
 import SettingsRolesPanel from "./settings/SettingsRolesPanel";
 import ChangePasswordCard from "./settings/ChangePasswordCard";
 import PublicLeaveLinkCard from "./settings/PublicLeaveLinkCard";
+import DevicesPanel from "./settings/DevicesPanel";
 
-type Section = "general" | "hours" | "roles" | "security";
+type Section = "general" | "hours" | "roles" | "devices" | "security";
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: "general", label: "General", icon: "🏢" },
   { id: "hours", label: "Working Hours", icon: "🕒" },
   { id: "roles", label: "Roles", icon: "🏷️" },
+  { id: "devices", label: "Kiosk Devices", icon: "📱" },
   { id: "security", label: "Security", icon: "🔒" },
 ];
 
-interface Props {
-  onPasswordChanged?: (newPassword: string) => void;
-}
-
-export default function SettingsTab({ onPasswordChanged }: Props) {
+export default function SettingsTab() {
   const [section, setSection] = useState<Section>("general");
-  const { settings, draft, setDraft, loading, saving, savedAt, isDirty, save, reset, reload } = useSettingsForm();
+  const { draft, setDraft, loading, saving, savedAt, isDirty, save, reset } = useSettingsForm();
   const { roles, addRole, saveRoleEdit, removeRole } = useRoles();
 
   if (loading || !draft) {
@@ -85,13 +83,11 @@ export default function SettingsTab({ onPasswordChanged }: Props) {
           <SettingsRolesPanel roles={roles} onAdd={addRole} onSaveEdit={saveRoleEdit} onRemove={removeRole} />
         )}
 
+        {section === "devices" && <DevicesPanel />}
+
         {section === "security" && (
           <div className="space-y-4 max-w-2xl">
-            <ChangePasswordCard
-              hasCustomAdminPassword={settings?.hasCustomAdminPassword}
-              onPasswordChanged={onPasswordChanged}
-              onChanged={reload}
-            />
+            <ChangePasswordCard />
             <PublicLeaveLinkCard />
           </div>
         )}

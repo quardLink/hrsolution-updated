@@ -1,4 +1,5 @@
-import { ensureSheet, readSheet, updateSheetRow, appendSheetRow, getSheetsClient, isGoogleSheetsConfigured } from "./googleSheets";
+import { eq } from "drizzle-orm";
+import { getDb, schema } from "../db/client";
 
 export interface OfficeSettings {
   defaultMorningStart: string;
@@ -6,9 +7,7 @@ export interface OfficeSettings {
   defaultAfternoonStart: string;
   defaultAfternoonEnd: string;
   lunchBreakEnd: string;
-  companyName: string;
   lateThresholdMinutes: string;
-  adminPasswordHash: string;
   weeklyOffDay: string; // e.g. "Friday" — informational only; payroll treats every day identically
   // Payroll-specific — a single company-wide shift with a floating break,
   // kept separate from the default* fields above (those still drive the
@@ -18,101 +17,43 @@ export interface OfficeSettings {
   payrollBreakMinutes: string;
 }
 
-const SHEET_NAME = "Settings";
-const HEADERS = ["Key", "Value"];
+function toSettings(row: typeof schema.orgSettings.$inferSelect): OfficeSettings {
+  return {
+    defaultMorningStart: row.defaultMorningStart,
+    defaultMorningEnd: row.defaultMorningEnd,
+    defaultAfternoonStart: row.defaultAfternoonStart,
+    defaultAfternoonEnd: row.defaultAfternoonEnd,
+    lunchBreakEnd: row.lunchBreakEnd,
+    lateThresholdMinutes: row.lateThresholdMinutes,
+    weeklyOffDay: row.weeklyOffDay,
+    payrollShiftStart: row.payrollShiftStart,
+    payrollShiftEnd: row.payrollShiftEnd,
+    payrollBreakMinutes: row.payrollBreakMinutes,
+  };
+}
 
-const DEFAULTS: OfficeSettings = {
-  defaultMorningStart: "08:00",
-  defaultMorningEnd: "13:30",
-  defaultAfternoonStart: "16:00",
-  defaultAfternoonEnd: "19:00",
-  lunchBreakEnd: "13:30",
-  companyName: "Petro Safe Tech",
-  lateThresholdMinutes: "15",
-  adminPasswordHash: "",
-  weeklyOffDay: "Friday",
-  payrollShiftStart: "09:00",
-  payrollShiftEnd: "18:00",
-  payrollBreakMinutes: "60",
-};
-
-// Keys that we always want to seed into the sheet on first run.
-// adminPasswordHash is special — only stored if explicitly set.
-const SEEDABLE_KEYS: (keyof OfficeSettings)[] = [
-  "defaultMorningStart",
-  "defaultMorningEnd",
-  "defaultAfternoonStart",
-  "defaultAfternoonEnd",
-  "lunchBreakEnd",
-  "companyName",
-  "lateThresholdMinutes",
-  "weeklyOffDay",
-  "payrollShiftStart",
-  "payrollShiftEnd",
-  "payrollBreakMinutes",
-];
-
-let cached: { data: OfficeSettings; ts: number } | null = null;
-const CACHE_MS = 30 * 1000;
-
-export async function getOfficeSettings(sheetId: string): Promise<OfficeSettings> {
-  if (cached && Date.now() - cached.ts < CACHE_MS) return cached.data;
-
-  // No Google Sheets configured — serve the hardcoded defaults directly.
-  if (!isGoogleSheetsConfigured()) return { ...DEFAULTS };
-
-  await ensureSheet(sheetId, SHEET_NAME, HEADERS);
-  const rows = await readSheet(sheetId, SHEET_NAME, 2);
-
-  const map = new Map<string, string>();
-  rows.forEach((r) => {
-    if (r[0]) map.set(r[0], r[1] ?? "");
-  });
-
-  const result: OfficeSettings = { ...DEFAULTS };
-  (Object.keys(DEFAULTS) as (keyof OfficeSettings)[]).forEach((k) => {
-    if (map.has(k)) {
-      result[k] = map.get(k) || DEFAULTS[k];
-    }
-  });
-
-  // Seed missing seedable keys (skip adminPasswordHash to avoid empty placeholder)
-  for (const k of SEEDABLE_KEYS) {
-    if (!map.has(k)) {
-      await appendSheetRow(sheetId, SHEET_NAME, 2, [k, DEFAULTS[k]]);
-    }
+export async function getOfficeSettings(orgId: string): Promise<OfficeSettings> {
+  const db = getDb();
+  const row = await db.query.orgSettings.findFirst({ where: eq(schema.orgSettings.orgId, orgId) });
+  if (!row) {
+    // Every org gets a settings row on signup — this only happens for an
+    // org created outside that path (e.g. the migration script).
+    const [created] = await db.insert(schema.orgSettings).values({ orgId }).returning();
+    return toSettings(created);
   }
-
-  cached = { data: result, ts: Date.now() };
-  return result;
+  return toSettings(row);
 }
 
 export async function updateOfficeSettings(
-  sheetId: string,
+  orgId: string,
   updates: Partial<OfficeSettings>,
 ): Promise<OfficeSettings> {
-  await ensureSheet(sheetId, SHEET_NAME, HEADERS);
-  const rows = await readSheet(sheetId, SHEET_NAME, 2);
-
-  const sheets = getSheetsClient();
-
-  for (const [key, value] of Object.entries(updates)) {
-    if (value === undefined) continue;
-    const idx = rows.findIndex((r) => r[0] === key);
-    if (idx >= 0) {
-      // Existing row → update in place (data starts at row 2)
-      await updateSheetRow(sheetId, SHEET_NAME, idx + 2, 2, [key, value]);
-    } else {
-      await appendSheetRow(sheetId, SHEET_NAME, 2, [key, value]);
-    }
-  }
-  // Suppress unused warning
-  void sheets;
-
-  cached = null;
-  return getOfficeSettings(sheetId);
-}
-
-export function clearSettingsCache(): void {
-  cached = null;
+  const db = getDb();
+  await getOfficeSettings(orgId); // ensure a row exists
+  const [updated] = await db
+    .update(schema.orgSettings)
+    .set(updates)
+    .where(eq(schema.orgSettings.orgId, orgId))
+    .returning();
+  return toSettings(updated);
 }

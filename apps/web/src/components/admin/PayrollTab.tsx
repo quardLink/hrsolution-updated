@@ -5,7 +5,7 @@ import { exportPayrollReportPdf, type PayrollResult } from "../../lib/pdf/payrol
 const now = new Date();
 
 export default function PayrollTab() {
-  const { password, baseUrl, onError } = useAdminApi();
+  const { baseUrl, onError } = useAdminApi();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [results, setResults] = useState<PayrollResult[]>([]);
@@ -16,7 +16,7 @@ export default function PayrollTab() {
     setLoading(true);
     try {
       const res = await fetch(`${baseUrl}/api/admin/payroll-summary?year=${year}&month=${month}`, {
-        headers: { "x-admin-password": password },
+        credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

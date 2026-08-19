@@ -20,10 +20,11 @@ export default function AdminPage() {
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const {
-    password,
-    setPassword,
+    checkingSession,
     authed,
     authError,
+    loginLoading,
+    org,
     logs,
     employees,
     loading,
@@ -32,7 +33,6 @@ export default function AdminPage() {
     fetchLogs,
     handleLogin,
     handleLogout,
-    changePassword,
   } = useAdminAuth(baseUrl);
 
   const {
@@ -48,29 +48,27 @@ export default function AdminPage() {
     stats,
   } = useAttendanceAnalytics(logs, employees);
 
+  if (checkingSession) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
   if (!authed) {
-    return (
-      <AdminLoginScreen
-        password={password}
-        onPasswordChange={setPassword}
-        authError={authError}
-        loading={loading}
-        onSubmit={handleLogin}
-      />
-    );
+    return <AdminLoginScreen authError={authError} loading={loginLoading} onSubmit={handleLogin} />;
   }
 
   const isReportView = view === "rankings" || view === "summary";
 
   return (
-    <AdminApiProvider value={{ baseUrl, password, onError: setError }}>
+    <AdminApiProvider value={{ baseUrl, onError: setError }}>
       <AdminShell
         view={view}
         onViewChange={setView}
         onLogout={handleLogout}
-        onRefresh={() => fetchLogs(password)}
+        onRefresh={fetchLogs}
         onTestSound={() => playChime()}
         loading={loading}
+        orgName={org?.name}
+        logoDataUrl={org?.logoDataUrl}
       >
         {error && (
           <div className="bg-destructive/10 border border-destructive/30 text-red-400 rounded-xl p-3 lg:p-4 text-sm">
@@ -108,7 +106,7 @@ export default function AdminPage() {
 
         {view === "payroll" && <PayrollTab />}
 
-        {view === "settings" && <SettingsTab onPasswordChanged={changePassword} />}
+        {view === "settings" && <SettingsTab />}
       </AdminShell>
     </AdminApiProvider>
   );

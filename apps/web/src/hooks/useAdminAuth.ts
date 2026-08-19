@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export interface LogEntry {
   timestamp: string;
@@ -18,32 +18,38 @@ export interface Employee {
   reportingAfternoon?: string;
 }
 
-const STORAGE_KEY = "pst_admin_password";
+export interface OrgInfo {
+  id: string;
+  name: string;
+  slug: string;
+  logoDataUrl: string | null;
+}
+
+export interface AdminUserInfo {
+  id: string;
+  email: string;
+  name: string;
+}
 
 export function useAdminAuth(baseUrl: string) {
-  const [password, setPassword] = useState<string>(() => localStorage.getItem(STORAGE_KEY) ?? "");
-  const [authed, setAuthed] = useState<boolean>(false);
-  const [authError, setAuthError] = useState<string>("");
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [authed, setAuthed] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [org, setOrg] = useState<OrgInfo | null>(null);
+  const [adminUser, setAdminUser] = useState<AdminUserInfo | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Logs are fetched from a Google-Sheets-backed endpoint, which can fail
-  // for reasons unrelated to the password (e.g. Sheets not configured yet).
-  // Auth is verified separately via /api/admin/login so a Sheets outage
-  // doesn't masquerade as "wrong password" and block the whole session.
-  async function fetchLogs(pwd: string) {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${baseUrl}/api/admin/logs`, {
-        headers: { "x-admin-password": pwd },
-      });
+      const res = await fetch(`${baseUrl}/api/admin/logs`, { credentials: "include" });
       if (res.status === 401) {
-        setAuthError("Invalid password");
         setAuthed(false);
-        localStorage.removeItem(STORAGE_KEY);
         return;
       }
       if (!res.ok) {
@@ -59,68 +65,77 @@ export function useAdminAuth(baseUrl: string) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [baseUrl]);
 
-  async function verifyAndLogin(pwd: string) {
-    setLoading(true);
-    setAuthError("");
-    try {
-      const res = await fetch(`${baseUrl}/api/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: pwd }),
-      });
-      if (!res.ok) {
-        setAuthError(res.status === 401 ? "Invalid password" : "Login failed");
-        setAuthed(false);
-        localStorage.removeItem(STORAGE_KEY);
-        return;
-      }
-      setAuthed(true);
-      localStorage.setItem(STORAGE_KEY, pwd);
-      await fetchLogs(pwd);
-    } catch {
-      setAuthError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const fetchMe = useCallback(async () => {
+    const res = await fetch(`${baseUrl}/api/auth/me`, { credentials: "include" });
+    if (!res.ok) return false;
+    const data = await res.json();
+    setOrg(data.org);
+    setAdminUser(data.adminUser);
+    return true;
+  }, [baseUrl]);
 
   useEffect(() => {
-    if (password) verifyAndLogin(password);
+    (async () => {
+      setCheckingSession(true);
+      const ok = await fetchMe();
+      setAuthed(ok);
+      if (ok) await fetchLogs();
+      setCheckingSession(false);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    verifyAndLogin(password);
+  async function handleLogin(email: string, password: string) {
+    setLoginLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setAuthError(data.error || "Login failed");
+        return;
+      }
+      await fetchMe();
+      setAuthed(true);
+      await fetchLogs();
+    } catch {
+      setAuthError("Network error");
+    } finally {
+      setLoginLoading(false);
+    }
   }
 
-  function handleLogout() {
-    localStorage.removeItem(STORAGE_KEY);
-    setPassword("");
+  async function handleLogout() {
+    await fetch(`${baseUrl}/api/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
     setAuthed(false);
+    setOrg(null);
+    setAdminUser(null);
     setLogs([]);
-  }
-
-  function changePassword(newPwd: string) {
-    setPassword(newPwd);
-    localStorage.setItem(STORAGE_KEY, newPwd);
+    setEmployees([]);
   }
 
   return {
-    password,
-    setPassword,
+    checkingSession,
     authed,
     authError,
+    loginLoading,
+    org,
+    adminUser,
     logs,
     employees,
     loading,
     error,
     setError,
     fetchLogs,
+    fetchMe,
     handleLogin,
     handleLogout,
-    changePassword,
   };
 }

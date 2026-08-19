@@ -9,7 +9,7 @@
 // Every day (including the weekly off day) is treated identically: OT is
 // simply any time outside [shiftStart, shiftEnd].
 
-import type { AttendanceLogRow } from "./googleSheets";
+import type { AttendanceLogRow } from "./attendanceLogs";
 import type { Employee } from "./employees";
 import type { LeaveRequest } from "./leaveRequests";
 
