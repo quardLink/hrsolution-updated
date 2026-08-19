@@ -13,6 +13,28 @@ function generateCode(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
+const PRIVATE_IP = /^(::1|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::ffff:127\.|::ffff:10\.)/;
+
+// Best-effort city/country lookup for a device's IP, resolved once at
+// pairing time so an admin can tell paired machines apart without staring
+// at raw addresses. Never throws — pairing must succeed even if this
+// lookup is slow, rate-limited, or the IP is unresolvable (localhost,
+// private network, lookup service down, etc).
+async function resolveIpLocation(ip: string | undefined): Promise<string | null> {
+  if (!ip || PRIVATE_IP.test(ip)) return null;
+  try {
+    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,city,country`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { status: string; city?: string; country?: string };
+    if (data.status !== "success") return null;
+    return [data.city, data.country].filter(Boolean).join(", ") || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generatePairingCode(
   orgId: string,
   deviceName = "Kiosk",
@@ -48,6 +70,7 @@ export async function redeemPairingCode(
   if (!claimed) return null; // lost a race with a concurrent redemption
 
   const token = randomBytes(32).toString("base64url");
+  const pairedLocation = await resolveIpLocation(meta.ip);
   const [device] = await db
     .insert(schema.devices)
     .values({
@@ -56,6 +79,7 @@ export async function redeemPairingCode(
       tokenHash: hashToken(token),
       userAgent: meta.userAgent,
       pairedIp: meta.ip,
+      pairedLocation,
       lastSeenIp: meta.ip,
     })
     .returning();

@@ -7,6 +7,7 @@ interface Device {
   name: string;
   userAgent: string | null;
   pairedIp: string | null;
+  pairedLocation: string | null;
   lastSeenIp: string | null;
   pairedAt: string;
   lastSeenAt: string | null;
@@ -164,12 +165,11 @@ export default function DevicesPanel() {
                   <div className="font-medium text-foreground text-sm">{d.name}</div>
                   <div className="text-xs text-muted-foreground">
                     {describeUserAgent(d.userAgent)}
-                    {d.pairedIp && ` · Paired from ${d.pairedIp}`}
+                    {(d.pairedLocation || d.pairedIp) && ` · Paired from ${d.pairedLocation || d.pairedIp}`}
                   </div>
                   <div className="text-xs text-muted-foreground/70 mt-0.5">
                     Paired {new Date(d.pairedAt).toLocaleDateString()}
-                    {d.lastSeenAt &&
-                      ` · Last seen ${new Date(d.lastSeenAt).toLocaleString()}${d.lastSeenIp ? ` from ${d.lastSeenIp}` : ""}`}
+                    {d.lastSeenAt && ` · Last seen ${new Date(d.lastSeenAt).toLocaleString()}`}
                   </div>
                 </div>
                 <button

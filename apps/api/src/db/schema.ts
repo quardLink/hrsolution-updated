@@ -140,6 +140,7 @@ export const devices = pgTable("devices", {
   // what's checked on every request.
   userAgent: text("user_agent"),
   pairedIp: text("paired_ip"),
+  pairedLocation: text("paired_location"), // e.g. "Riyadh, Saudi Arabia" — resolved once at pairing time
   lastSeenIp: text("last_seen_ip"),
   pairedAt: timestamp("paired_at", { withTimezone: true }).notNull().defaultNow(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),

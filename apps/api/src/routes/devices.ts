@@ -20,6 +20,7 @@ router.get("/admin/devices", requireOrgSession, async (req, res): Promise<void> 
       name: d.name,
       userAgent: d.userAgent,
       pairedIp: d.pairedIp,
+      pairedLocation: d.pairedLocation,
       lastSeenIp: d.lastSeenIp,
       pairedAt: d.pairedAt,
       lastSeenAt: d.lastSeenAt,
