@@ -4,6 +4,7 @@
   "buildCommand": "npm run build --workspace=apps/web && npm run build --workspace=apps/api",
   "outputDirectory": "apps/web/dist/public",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
