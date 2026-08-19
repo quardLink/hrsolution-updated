@@ -29,6 +29,7 @@ export async function generatePairingCode(
 // database read alone can't be used to impersonate a paired kiosk.
 export async function redeemPairingCode(
   code: string,
+  meta: { userAgent?: string; ip?: string } = {},
 ): Promise<{ orgId: string; deviceId: string; token: string } | null> {
   const db = getDb();
   const now = new Date();
@@ -49,7 +50,14 @@ export async function redeemPairingCode(
   const token = randomBytes(32).toString("base64url");
   const [device] = await db
     .insert(schema.devices)
-    .values({ orgId: claimed.orgId, name: claimed.deviceName, tokenHash: hashToken(token) })
+    .values({
+      orgId: claimed.orgId,
+      name: claimed.deviceName,
+      tokenHash: hashToken(token),
+      userAgent: meta.userAgent,
+      pairedIp: meta.ip,
+      lastSeenIp: meta.ip,
+    })
     .returning();
 
   return { orgId: device.orgId, deviceId: device.id, token };
@@ -57,6 +65,7 @@ export async function redeemPairingCode(
 
 export async function verifyDeviceToken(
   token: string,
+  meta: { ip?: string } = {},
 ): Promise<{ orgId: string; deviceId: string } | null> {
   const db = getDb();
   const device = await db.query.devices.findFirst({
@@ -66,7 +75,7 @@ export async function verifyDeviceToken(
 
   void db
     .update(schema.devices)
-    .set({ lastSeenAt: new Date() })
+    .set({ lastSeenAt: new Date(), ...(meta.ip ? { lastSeenIp: meta.ip } : {}) })
     .where(eq(schema.devices.id, device.id))
     .then(
       () => {},
@@ -99,7 +108,7 @@ export async function requireDeviceToken(req: Request, res: Response, next: Next
     return;
   }
 
-  const device = await verifyDeviceToken(token);
+  const device = await verifyDeviceToken(token, { ip: req.ip });
   if (!device) {
     res.status(401).json({ error: "Device not paired", code: "DEVICE_NOT_PAIRED" });
     return;

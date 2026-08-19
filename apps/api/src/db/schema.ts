@@ -134,6 +134,13 @@ export const devices = pgTable("devices", {
   orgId: uuid("org_id").notNull().references(() => orgs.id),
   name: text("name").notNull(),
   tokenHash: text("token_hash").notNull().unique(),
+  // Captured once at pairing time (not re-checked afterward) — purely
+  // informational, so an admin can tell which physical machine a device
+  // row actually is. Not part of the security model: the token itself is
+  // what's checked on every request.
+  userAgent: text("user_agent"),
+  pairedIp: text("paired_ip"),
+  lastSeenIp: text("last_seen_ip"),
   pairedAt: timestamp("paired_at", { withTimezone: true }).notNull().defaultNow(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),

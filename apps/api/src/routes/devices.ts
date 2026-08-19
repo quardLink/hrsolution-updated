@@ -14,7 +14,17 @@ router.post("/admin/devices/pairing-code", requireOrgSession, async (req, res): 
 
 router.get("/admin/devices", requireOrgSession, async (req, res): Promise<void> => {
   const devices = await listDevices(req.orgId!);
-  res.json({ devices: devices.map((d) => ({ id: d.id, name: d.name, pairedAt: d.pairedAt, lastSeenAt: d.lastSeenAt })) });
+  res.json({
+    devices: devices.map((d) => ({
+      id: d.id,
+      name: d.name,
+      userAgent: d.userAgent,
+      pairedIp: d.pairedIp,
+      lastSeenIp: d.lastSeenIp,
+      pairedAt: d.pairedAt,
+      lastSeenAt: d.lastSeenAt,
+    })),
+  });
 });
 
 router.delete("/admin/devices/:id", requireOrgSession, async (req, res): Promise<void> => {
@@ -32,7 +42,7 @@ router.post("/devices/pair", async (req, res): Promise<void> => {
     return;
   }
 
-  const result = await redeemPairingCode(code);
+  const result = await redeemPairingCode(code, { userAgent: req.headers["user-agent"], ip: req.ip });
   if (!result) {
     res.status(400).json({ error: "That code is invalid or has expired" });
     return;
