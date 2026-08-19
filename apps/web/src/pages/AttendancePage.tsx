@@ -5,8 +5,18 @@ import ActionStep from "../components/attendance/ActionStep";
 import EmployeeStep from "../components/attendance/EmployeeStep";
 import PinStep from "../components/attendance/PinStep";
 import ResultStep from "../components/attendance/ResultStep";
+import StepProgress from "../components/attendance/StepProgress";
 import { SESSION_LABELS, useAttendanceWizard } from "../hooks/useAttendanceWizard";
 import { useCheckOutReminder } from "../hooks/useCheckOutReminder";
+
+function KioskGlow() {
+  return (
+    <div className="pointer-events-none fixed inset-0 overflow-hidden">
+      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-150 h-150 rounded-full bg-primary/20 blur-[120px]" />
+      <div className="absolute bottom-0 right-0 w-100 h-100 rounded-full bg-violet-600/10 blur-[100px]" />
+    </div>
+  );
+}
 
 export default function AttendancePage() {
   const {
@@ -32,34 +42,35 @@ export default function AttendancePage() {
 
   if (step === "splash") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#0f172a] via-[#1e3a5f] to-[#0f172a] relative">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
+        <KioskGlow />
         <Link
           href="/admin"
-          className="absolute top-4 right-4 px-3 py-1.5 text-xs font-medium text-blue-200 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-colors"
+          className="absolute top-4 right-4 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors"
         >
           🔐 Admin
         </Link>
         <div
-          className="flex flex-col items-center gap-8"
+          className="flex flex-col items-center gap-8 relative"
           style={{ animation: "fadeIn 1s ease-out forwards" }}
         >
           <div className="relative">
-            <div className="w-40 h-40 rounded-2xl bg-white backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-2xl p-3">
+            <div className="w-40 h-40 rounded-2xl bg-white border border-border flex items-center justify-center shadow-2xl p-3">
               <img src="/logo.jpg" alt="PST Logo" className="w-full h-full object-contain" />
             </div>
-            <div className="absolute -bottom-3 -right-3 w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg">
-              <span className="text-white text-lg">✓</span>
+            <div className="absolute -bottom-3 -right-3 w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg">
+              <span className="text-primary-foreground text-lg">✓</span>
             </div>
           </div>
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-white tracking-tight">Petro Safe Tech</h1>
-            <p className="text-blue-300 mt-2 text-lg">Employee Attendance System</p>
+            <h1 className="text-4xl font-bold text-foreground tracking-tight">Petro Safe Tech</h1>
+            <p className="text-muted-foreground mt-2 text-lg">Employee Attendance System</p>
           </div>
           <div className="flex gap-2">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-2.5 h-2.5 rounded-full bg-blue-400"
+                className="w-2.5 h-2.5 rounded-full bg-primary"
                 style={{ animation: `pulse 1.5s ${i * 0.3}s ease-in-out infinite` }}
               />
             ))}
@@ -74,31 +85,39 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e3a5f] to-[#0f172a] flex flex-col relative">
-      <Link
-        href="/admin"
-        className="absolute top-4 right-4 px-3 py-1.5 text-xs font-medium text-blue-200 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-colors z-40"
-      >
-        🔐 Admin
-      </Link>
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      <KioskGlow />
       {reminder && <ReminderBanner reminder={reminder} onDismiss={dismiss} />}
 
-      <header className="pt-6 pb-4 px-6 flex flex-col items-center gap-4">
+      <header className="px-6 lg:px-10 pt-5 pb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 relative">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white border border-white/20 flex items-center justify-center p-1">
+          <div className="w-9 h-9 rounded-xl bg-white border border-border flex items-center justify-center p-1 flex-shrink-0">
             <img src="/logo.jpg" alt="PST Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Petro Safe Tech</h1>
+          <div>
+            <h1 className="text-base font-bold text-foreground tracking-tight leading-none whitespace-nowrap">Petro Safe Tech</h1>
+            <p className="text-muted-foreground text-xs mt-1">
+              {step === "action" ? timeOfDay : SESSION_LABELS[session]}
+            </p>
+          </div>
         </div>
-        <Clock />
-        <div className="px-4 py-1.5 bg-white/10 border border-white/20 rounded-full">
-          <span className="text-blue-200 text-sm font-medium">
-            {step === "action" ? timeOfDay : SESSION_LABELS[session]}
-          </span>
+
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <Clock />
+          <Link
+            href="/admin"
+            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors"
+          >
+            🔐 Admin
+          </Link>
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 pb-8">
+      <div className="px-6 lg:px-10 pb-2 flex justify-center relative">
+        <StepProgress step={step} />
+      </div>
+
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-8 py-6 relative">
         {step === "action" && <ActionStep onSelect={handleActionSelect} />}
 
         {step === "employee" && (

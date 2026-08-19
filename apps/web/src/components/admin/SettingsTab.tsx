@@ -27,8 +27,8 @@ export default function SettingsTab({ onPasswordChanged }: Props) {
 
   if (loading || !draft) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="text-center py-8 text-gray-500">Loading settings...</div>
+      <div className="bg-card rounded-xl border border-border p-6">
+        <div className="text-center py-8 text-muted-foreground">Loading settings...</div>
       </div>
     );
   }
@@ -36,7 +36,7 @@ export default function SettingsTab({ onPasswordChanged }: Props) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 lg:gap-6">
       {/* Section nav */}
-      <nav className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 lg:p-3 h-fit lg:sticky lg:top-4">
+      <nav className="bg-card rounded-xl border border-border p-2 lg:p-3 h-fit lg:sticky lg:top-4">
         <div className="flex lg:flex-col gap-1 overflow-x-auto">
           {SECTIONS.map((s) => (
             <button
@@ -44,8 +44,8 @@ export default function SettingsTab({ onPasswordChanged }: Props) {
               onClick={() => setSection(s.id)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 section === s.id
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-primary/15 text-indigo-300"
+                  : "text-muted-foreground hover:bg-muted"
               }`}
             >
               <span>{s.icon}</span>

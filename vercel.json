@@ -1,6 +1,7 @@
 {
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @workspace/web run build",
+  "framework": null,
+  "installCommand": "npm install",
+  "buildCommand": "npm run build --workspace=apps/web",
   "outputDirectory": "apps/web/dist/public",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }

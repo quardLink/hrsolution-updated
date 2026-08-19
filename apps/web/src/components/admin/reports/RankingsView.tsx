@@ -21,22 +21,22 @@ export default function RankingsView({ rankings, totalDaysInPeriod }: Props) {
       )}
 
       {/* Full ranking table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-gray-900">Performance Rankings</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <h2 className="font-semibold text-foreground">Performance Rankings</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Score = Punctuality 40% + Attendance 30% + Reliability 30%
             </p>
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             Period: {totalDaysInPeriod} day(s)
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs uppercase text-gray-500 bg-gray-50 border-b border-gray-200">
+              <tr className="text-xs uppercase text-muted-foreground bg-muted/30 border-b border-border">
                 <th className="px-3 py-3 text-center">Rank</th>
                 <th className="px-3 py-3 text-left">Employee</th>
                 <th className="px-3 py-3 text-left">Role</th>
@@ -52,17 +52,17 @@ export default function RankingsView({ rankings, totalDaysInPeriod }: Props) {
             </thead>
             <tbody>
               {rankings.map((r, i) => (
-                <tr key={r.employeeId} className={`border-b border-gray-100 hover:bg-gray-50 ${i < 3 ? "bg-amber-50/30" : ""}`}>
+                <tr key={r.employeeId} className={`border-b border-border/60 hover:bg-muted/30 ${i < 3 ? "bg-amber-500/5" : ""}`}>
                   <td className="px-3 py-3 text-center font-bold">
                     {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
                   </td>
                   <td className="px-3 py-3">
-                    <div className="font-semibold text-gray-900">{r.employeeName}</div>
-                    <div className="text-xs text-gray-500">{r.employeeId}</div>
+                    <div className="font-semibold text-foreground">{r.employeeName}</div>
+                    <div className="text-xs text-muted-foreground">{r.employeeId}</div>
                   </td>
-                  <td className="px-3 py-3 text-gray-700 capitalize text-xs">{r.role.replace("_", " ")}</td>
-                  <td className="px-3 py-3 text-center text-gray-700">
-                    {r.daysPresent}<span className="text-gray-400">/{r.totalDaysInPeriod}</span>
+                  <td className="px-3 py-3 text-foreground/80 capitalize text-xs">{r.role.replace("_", " ")}</td>
+                  <td className="px-3 py-3 text-center text-foreground/80">
+                    {r.daysPresent}<span className="text-muted-foreground">/{r.totalDaysInPeriod}</span>
                   </td>
                   <td className="px-3 py-3 text-center">
                     <ScoreBar value={Math.min(100, r.attendanceRate)} suffix="%" />
@@ -73,13 +73,13 @@ export default function RankingsView({ rankings, totalDaysInPeriod }: Props) {
                   <td className="px-3 py-3 text-center">
                     <ScoreBar value={r.reliabilityScore} suffix="%" />
                   </td>
-                  <td className="px-3 py-3 text-center text-gray-700">
-                    {r.avgMinutesLate > 0 ? `${r.avgMinutesLate.toFixed(0)}m` : <span className="text-emerald-600 font-medium">0m</span>}
+                  <td className="px-3 py-3 text-center text-foreground/80">
+                    {r.avgMinutesLate > 0 ? `${r.avgMinutesLate.toFixed(0)}m` : <span className="text-emerald-400 font-medium">0m</span>}
                   </td>
-                  <td className="px-3 py-3 text-center text-gray-700">
-                    {r.avgHoursPerDay > 0 ? r.avgHoursPerDay.toFixed(1) : <span className="text-gray-400">—</span>}
+                  <td className="px-3 py-3 text-center text-foreground/80">
+                    {r.avgHoursPerDay > 0 ? r.avgHoursPerDay.toFixed(1) : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-3 text-center font-bold text-gray-900">
+                  <td className="px-3 py-3 text-center font-bold text-foreground">
                     {r.overallScore.toFixed(1)}
                   </td>
                   <td className="px-3 py-3 text-center">
@@ -89,7 +89,7 @@ export default function RankingsView({ rankings, totalDaysInPeriod }: Props) {
               ))}
               {rankings.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-center py-12 text-gray-400">
+                  <td colSpan={11} className="text-center py-12 text-muted-foreground">
                     No data for the selected period
                   </td>
                 </tr>

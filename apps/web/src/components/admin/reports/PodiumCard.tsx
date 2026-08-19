@@ -9,7 +9,7 @@ const CONFIG: Record<number, { medal: string; bg: string; height: string; label:
 export default function PodiumCard({ rank, ranking }: { rank: number; ranking: EmployeeRanking }) {
   const config = CONFIG[rank]!;
   return (
-    <div className={`bg-gradient-to-br ${config.bg} rounded-2xl shadow-lg text-white p-6 ${config.height} text-center`}>
+    <div className={`bg-gradient-to-br ${config.bg} rounded-2xl shadow-xl text-white p-6 ${config.height} text-center`}>
       <div className="text-5xl mb-2">{config.medal}</div>
       <div className="text-xs uppercase tracking-wider opacity-90">{config.label}</div>
       <div className="text-2xl font-bold mt-1">{ranking.employeeName}</div>

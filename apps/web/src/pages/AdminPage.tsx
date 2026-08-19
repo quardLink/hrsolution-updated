@@ -73,7 +73,7 @@ export default function AdminPage() {
         loading={loading}
       >
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 lg:p-4 text-sm">
+          <div className="bg-destructive/10 border border-destructive/30 text-red-400 rounded-xl p-3 lg:p-4 text-sm">
             {error}
           </div>
         )}

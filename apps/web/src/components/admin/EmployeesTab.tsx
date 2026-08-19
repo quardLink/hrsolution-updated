@@ -27,16 +27,16 @@ export default function EmployeesTab() {
   });
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-      <div className="p-4 lg:p-5 border-b border-gray-200">
+    <div className="bg-card rounded-xl border border-border">
+      <div className="p-4 lg:p-5 border-b border-border">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
-            <h2 className="text-lg lg:text-xl font-bold text-gray-900">Employees</h2>
-            <p className="text-sm text-gray-500 hidden sm:block">Add, edit, or deactivate employees and their PINs.</p>
+            <h2 className="text-lg lg:text-xl font-bold text-foreground">Employees</h2>
+            <p className="text-sm text-muted-foreground hidden sm:block">Add, edit, or deactivate employees and their PINs.</p>
           </div>
           <button
             onClick={openAdd}
-            className="px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg whitespace-nowrap"
+            className="px-3 lg:px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium rounded-lg whitespace-nowrap"
           >
             + Add
           </button>
@@ -47,14 +47,14 @@ export default function EmployeesTab() {
             placeholder="Search by name or ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-          <label className="flex items-center gap-2 text-sm text-gray-600 px-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground px-2">
             <input
               type="checkbox"
               checked={showInactive}
               onChange={(e) => setShowInactive(e.target.checked)}
-              className="rounded"
+              className="rounded accent-primary"
             />
             Show inactive
           </label>

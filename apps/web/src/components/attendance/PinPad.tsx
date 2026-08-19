@@ -13,27 +13,27 @@ export default function PinPad({ onDigit, onClear, onBackspace, digitsDisabled }
           key={d}
           onClick={() => onDigit(d)}
           disabled={digitsDisabled}
-          className="h-14 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 font-bold text-xl hover:bg-blue-50 hover:border-blue-300 active:scale-95 transition-all disabled:opacity-50"
+          className="h-16 rounded-xl bg-muted border border-border text-foreground font-bold text-xl hover:bg-primary/15 hover:border-primary/50 active:scale-95 transition-all disabled:opacity-50"
         >
           {d}
         </button>
       ))}
       <button
         onClick={onClear}
-        className="h-14 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 font-semibold text-sm hover:bg-red-50 hover:border-red-200 active:scale-95 transition-all"
+        className="h-16 rounded-xl bg-muted border border-border text-muted-foreground font-semibold text-sm hover:bg-destructive/10 hover:border-destructive/40 active:scale-95 transition-all"
       >
         CLR
       </button>
       <button
         onClick={() => onDigit("0")}
         disabled={digitsDisabled}
-        className="h-14 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 font-bold text-xl hover:bg-blue-50 hover:border-blue-300 active:scale-95 transition-all disabled:opacity-50"
+        className="h-16 rounded-xl bg-muted border border-border text-foreground font-bold text-xl hover:bg-primary/15 hover:border-primary/50 active:scale-95 transition-all disabled:opacity-50"
       >
         0
       </button>
       <button
         onClick={onBackspace}
-        className="h-14 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 font-semibold text-lg hover:bg-gray-100 active:scale-95 transition-all"
+        className="h-16 rounded-xl bg-muted border border-border text-muted-foreground font-semibold text-lg hover:bg-secondary active:scale-95 transition-all"
       >
         ⌫
       </button>

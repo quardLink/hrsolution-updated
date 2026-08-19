@@ -52,10 +52,10 @@ export default function ChangePasswordCard({ hasCustomAdminPassword, onPasswordC
   return (
     <form
       onSubmit={changePassword}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6"
+      className="bg-card rounded-xl border border-border p-4 lg:p-6"
     >
-      <h2 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">Admin Password</h2>
-      <p className="text-sm text-gray-500 mb-5">
+      <h2 className="text-lg lg:text-xl font-bold text-foreground mb-1">Admin Password</h2>
+      <p className="text-sm text-muted-foreground mb-5">
         {hasCustomAdminPassword
           ? "A custom admin password is currently active."
           : "Currently using the default password. Change it to secure your dashboard."}
@@ -63,33 +63,33 @@ export default function ChangePasswordCard({ hasCustomAdminPassword, onPasswordC
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+          <label className="block text-sm font-medium text-foreground/90 mb-1">Current Password</label>
           <input
             type="password"
             value={pwForm.current}
             onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             autoComplete="current-password"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+          <label className="block text-sm font-medium text-foreground/90 mb-1">New Password</label>
           <input
             type="password"
             value={pwForm.next}
             onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             autoComplete="new-password"
           />
-          <p className="text-xs text-gray-500 mt-1">At least 6 characters.</p>
+          <p className="text-xs text-muted-foreground mt-1">At least 6 characters.</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+          <label className="block text-sm font-medium text-foreground/90 mb-1">Confirm New Password</label>
           <input
             type="password"
             value={pwForm.confirm}
             onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             autoComplete="new-password"
           />
         </div>
@@ -98,19 +98,19 @@ export default function ChangePasswordCard({ hasCustomAdminPassword, onPasswordC
           <div
             className={`text-sm rounded-lg px-3 py-2 ${
               pwMsg.kind === "ok"
-                ? "bg-green-50 text-green-700"
-                : "bg-red-50 text-red-700"
+                ? "bg-emerald-500/10 text-emerald-400"
+                : "bg-destructive/10 text-red-400"
             }`}
           >
             {pwMsg.text}
           </div>
         )}
 
-        <div className="pt-2 border-t flex justify-end">
+        <div className="pt-2 border-t border-border flex justify-end">
           <button
             type="submit"
             disabled={pwSaving}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            className="px-5 py-2 bg-primary hover:opacity-90 text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
           >
             {pwSaving ? "Saving..." : "Change Password"}
           </button>

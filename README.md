@@ -21,10 +21,10 @@ api/            Vercel serverless function entry (wraps apps/api's Express app)
 
 ## Local development
 
-Requires Node 24+ and pnpm.
+Requires Node 24+ and npm.
 
 ```
-pnpm install
+npm install
 ```
 
 Create `apps/api/.env` with:
@@ -39,8 +39,8 @@ PORT=4000
 Then in two terminals:
 
 ```
-pnpm --filter @workspace/api run dev    # API on :4000
-pnpm --filter @workspace/web run dev    # frontend, proxies /api to :4000
+npm run dev --workspace=apps/api    # API on :4000
+npm run dev --workspace=apps/web    # frontend, proxies /api to :4000
 ```
 
 Share the Google Sheet with the service account email (Editor access) —
@@ -58,7 +58,7 @@ For office-PC kiosk setup (Chrome kiosk mode, auto-start on boot), see
 
 ## Commands
 
-- `pnpm run typecheck` — typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and
+- `npm run typecheck` — typecheck across all packages
+- `npm run build` — typecheck + build all packages
+- `npm run codegen --workspace=packages/api-spec` — regenerate API hooks and
   Zod schemas from the OpenAPI spec after changing `packages/api-spec/openapi.yaml`

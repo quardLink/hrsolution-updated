@@ -13,29 +13,29 @@ interface Props {
 
 export default function PinStep({ employeeName, pin, pinError, isSubmitting, onBack, onDigit, onClear, onBackspace }: Props) {
   return (
-    <div className="w-full max-w-xs space-y-5">
+    <div className="w-full max-w-sm space-y-5">
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+          className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center text-foreground hover:border-primary/50 transition-colors"
         >
           ←
         </button>
         <div>
-          <h2 className="text-xl font-bold text-white">Enter Your PIN</h2>
-          <p className="text-blue-300 text-sm">{employeeName}</p>
+          <h2 className="text-xl font-bold text-foreground">Enter Your PIN</h2>
+          <p className="text-muted-foreground text-sm">{employeeName}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-xl space-y-6">
+      <div className="bg-card border border-border rounded-2xl p-7 shadow-xl space-y-6">
         <div className="flex justify-center gap-4">
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all duration-150 ${
+              className={`w-13 h-13 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all duration-150 ${
                 i < pin.length
-                  ? "bg-blue-600 border-blue-600 text-white scale-105"
-                  : "bg-gray-50 border-gray-200 text-gray-300"
+                  ? "bg-primary border-primary text-primary-foreground scale-105"
+                  : "bg-muted border-border text-muted-foreground"
               }`}
             >
               {i < pin.length ? "•" : ""}
@@ -44,7 +44,7 @@ export default function PinStep({ employeeName, pin, pinError, isSubmitting, onB
         </div>
 
         {pinError && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm text-center font-medium">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-red-400 text-sm text-center font-medium">
             {pinError}
           </div>
         )}
@@ -52,7 +52,7 @@ export default function PinStep({ employeeName, pin, pinError, isSubmitting, onB
         <PinPad onDigit={onDigit} onClear={onClear} onBackspace={onBackspace} digitsDisabled={isSubmitting} />
 
         {isSubmitting && (
-          <div className="text-center text-blue-600 text-sm font-medium animate-pulse">
+          <div className="text-center text-primary text-sm font-medium animate-pulse">
             Verifying...
           </div>
         )}

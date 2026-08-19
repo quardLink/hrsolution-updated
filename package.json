@@ -2,15 +2,24 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
+  "workspaces": ["apps/*", "packages/*", "scripts"],
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "build": "npm run typecheck && npm run build --workspaces --if-present",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./apps/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "npm run typecheck:libs && npm run typecheck --workspace=apps/api --workspace=apps/web --workspace=scripts --if-present"
   },
   "private": true,
   "devDependencies": {
     "typescript": "~5.9.2",
     "prettier": "^3.8.1"
+  },
+  "overrides": {
+    "esbuild": "0.27.3",
+    "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0",
+    "fast-uri": "3.1.5",
+    "lodash": "4.18.1",
+    "yaml": "2.9.0",
+    "postcss": "8.5.26",
+    "path-to-regexp": "8.4.2"
   }
 }

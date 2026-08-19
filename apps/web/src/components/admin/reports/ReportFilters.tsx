@@ -39,32 +39,32 @@ export default function ReportFilters({
         <StatCard label="Anomalies" value={stats.anomalies} color="amber" />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 lg:p-4">
+      <div className="bg-card rounded-xl border border-border p-3 lg:p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">From Date</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">From Date</label>
             <input
               type="date"
               value={filterFromDate}
               onChange={(e) => onFilterFromDateChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">To Date</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">To Date</label>
             <input
               type="date"
               value={filterToDate}
               onChange={(e) => onFilterToDateChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Employee</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Employee</label>
             <select
               value={filterEmployee}
               onChange={(e) => onFilterEmployeeChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="all">All Employees</option>
               {employees.map((e) => (
@@ -74,7 +74,7 @@ export default function ReportFilters({
           </div>
           <button
             onClick={onExportPdf}
-            className="w-full px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
             title="Generate professional PDF report"
           >
             📄 Export PDF

@@ -2,7 +2,7 @@
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+npm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
 ```
 apps/
@@ -17,9 +17,9 @@ scripts/        One-off workspace tooling
 
 ## Stack
 
-- **Monorepo tool**: pnpm workspaces
+- **Monorepo tool**: npm workspaces
 - **Node.js version**: 24
-- **Package manager**: pnpm
+- **Package manager**: npm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
 - **Datastore**: Google Sheets (via a service account — see below), no database
@@ -32,11 +32,11 @@ scripts/        One-off workspace tooling
 
 ## Key Commands
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/api run dev` — run the API server locally
-- `pnpm --filter @workspace/web run dev` — run the frontend locally
+- `npm run typecheck` — full typecheck across all packages
+- `npm run build` — typecheck + build all packages
+- `npm run codegen --workspace=packages/api-spec` — regenerate API hooks and Zod schemas from OpenAPI spec
+- `npm run dev --workspace=apps/api` — run the API server locally
+- `npm run dev --workspace=apps/web` — run the frontend locally
 
 ## Employee Attendance App (`apps/web`)
 - React + Vite frontend at `/`

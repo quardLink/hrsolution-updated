@@ -14,7 +14,7 @@ export default function LeaveRequestsTab() {
   const filtered = filter === "all" ? requests : requests.filter((r) => r.status === filter);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+    <div className="bg-card rounded-xl border border-border">
       <LeaveRequestFilters filter={filter} onFilterChange={setFilter} onNew={() => setShowForm(true)} />
 
       <LeaveRequestList requests={filtered} loading={loading} filter={filter} onUpdateStatus={updateStatus} />
