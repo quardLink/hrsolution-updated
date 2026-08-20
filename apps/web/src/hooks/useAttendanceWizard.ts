@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useListEmployees, useLogAttendance } from "@workspace/api-client";
 import { isDeviceNotPaired } from "../lib/deviceAuth";
+import type { TranslationKey } from "../lib/i18n";
 
 export type Step = "splash" | "action" | "employee" | "face" | "pin" | "result";
 export type Action = "checkin" | "checkout";
@@ -8,9 +9,11 @@ export type Action = "checkin" | "checkout";
 // Simplified: only two sessions — morning check-in and evening check-out
 export type Session = "morning" | "evening";
 
-export const SESSION_LABELS: Record<Session, string> = {
-  morning: "Morning Check-In",
-  evening: "Evening Check-Out",
+// Translation keys, not display text — the view layer resolves these via
+// t() so the kiosk can show them in whatever locale is active.
+export const SESSION_LABELS: Record<Session, TranslationKey> = {
+  morning: "kiosk.sessionMorning",
+  evening: "kiosk.sessionEvening",
 };
 
 export interface EmployeeOption {
@@ -29,18 +32,18 @@ function getSessionForAction(action: Action): Session {
   return action === "checkin" ? "morning" : "evening";
 }
 
-function getTimeOfDay(): string {
+function getTimeOfDay(): TranslationKey {
   const h = new Date().getHours();
-  if (h < 12) return "Good Morning";
-  if (h < 17) return "Good Afternoon";
-  return "Good Evening";
+  if (h < 12) return "kiosk.goodMorning";
+  if (h < 17) return "kiosk.goodAfternoon";
+  return "kiosk.goodEvening";
 }
 
 export function useAttendanceWizard() {
   const [step, setStep] = useState<Step>("splash");
   const [action, setAction] = useState<Action>("checkin");
   const [session, setSession] = useState<Session>("morning");
-  const [timeOfDay, setTimeOfDay] = useState<string>(getTimeOfDay);
+  const [timeOfDay, setTimeOfDay] = useState<TranslationKey>(getTimeOfDay);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [pin, setPin] = useState<string>("");
   const [pinError, setPinError] = useState<string>("");

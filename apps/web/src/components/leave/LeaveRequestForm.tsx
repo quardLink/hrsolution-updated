@@ -1,4 +1,10 @@
 import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLocale } from "@/contexts/LocaleContext";
 import { LEAVE_TYPES } from "../../lib/constants";
 import { getDateKey } from "../../lib/attendance";
 import type { LeaveRequestSuccessData } from "./LeaveRequestSuccess";
@@ -17,10 +23,8 @@ interface Props {
   onSuccess: (success: LeaveRequestSuccessData) => void;
 }
 
-const fieldClass =
-  "w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-primary/50";
-
 export default function LeaveRequestForm({ baseUrl, orgSlug, employees, loadingEmps, loadError, onSuccess }: Props) {
+  const { t } = useLocale();
   const [employeeId, setEmployeeId] = useState("");
   const [pin, setPin] = useState("");
   const [type, setType] = useState("annual");
@@ -40,9 +44,9 @@ export default function LeaveRequestForm({ baseUrl, orgSlug, employees, loadingE
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!employeeId) return setError("Please select your name.");
-    if (!/^\d{4}$/.test(pin)) return setError("PIN must be exactly 4 digits.");
-    if (toDate < fromDate) return setError("End date can't be before start date.");
+    if (!employeeId) return setError(t("leavePublic.selectYourNameError"));
+    if (!/^\d{4}$/.test(pin)) return setError(t("leavePublic.pinDigitsError"));
+    if (toDate < fromDate) return setError(t("leavePublic.dateOrderError"));
 
     setSubmitting(true);
     try {
@@ -53,17 +57,17 @@ export default function LeaveRequestForm({ baseUrl, orgSlug, employees, loadingE
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || "Failed to submit request.");
+        setError(data.error || t("leavePublic.submitFailed"));
         return;
       }
       onSuccess({
         employeeName: data.request?.employeeName ?? "",
         fromDate,
         toDate,
-        type: LEAVE_TYPES.find((t) => t.value === type)?.label ?? type,
+        type: LEAVE_TYPES.find((lt) => lt.value === type)?.label ?? type,
       });
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("leavePublic.networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -71,25 +75,23 @@ export default function LeaveRequestForm({ baseUrl, orgSlug, employees, loadingE
 
   return (
     <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-foreground/90 mb-1">Your Name *</label>
-        <select
-          required
-          value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
-          disabled={loadingEmps}
-          className={fieldClass}
-        >
-          <option value="">{loadingEmps ? "Loading..." : "— Select your name —"}</option>
-          {employees.map((e) => (
-            <option key={e.id} value={e.id}>{e.name}</option>
-          ))}
-        </select>
+      <div className="space-y-1.5">
+        <Label>{t("leavePublic.yourNameRequired")}</Label>
+        <Select required value={employeeId} onValueChange={setEmployeeId} disabled={loadingEmps}>
+          <SelectTrigger>
+            <SelectValue placeholder={loadingEmps ? t("leavePublic.loading") : t("leavePublic.selectYourName")} />
+          </SelectTrigger>
+          <SelectContent>
+            {employees.map((e) => (
+              <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-foreground/90 mb-1">PIN (4 digits) *</label>
-        <input
+      <div className="space-y-1.5">
+        <Label>{t("leavePublic.pinRequired")}</Label>
+        <Input
           type="password"
           inputMode="numeric"
           pattern="[0-9]{4}"
@@ -98,58 +100,44 @@ export default function LeaveRequestForm({ baseUrl, orgSlug, employees, loadingE
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
           placeholder="••••"
-          className={`${fieldClass} font-mono tracking-[0.5em] text-center text-lg`}
+          className="font-mono tracking-[0.5em] text-center text-lg"
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          Same PIN you use on the attendance kiosk.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("leavePublic.pinHint")}</p>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-foreground/90 mb-1">Leave Type *</label>
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className={fieldClass}
-        >
-          {LEAVE_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
-          ))}
-        </select>
+      <div className="space-y-1.5">
+        <Label>{t("leavePublic.leaveTypeRequired")}</Label>
+        <Select value={type} onValueChange={setType}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LEAVE_TYPES.map((lt) => (
+              <SelectItem key={lt.value} value={lt.value}>{lt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-foreground/90 mb-1">From *</label>
-          <input
-            type="date"
-            required
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className={fieldClass}
-          />
+        <div className="space-y-1.5">
+          <Label>{t("leavePublic.from")}</Label>
+          <Input type="date" required value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground/90 mb-1">To *</label>
-          <input
-            type="date"
-            required
-            value={toDate}
-            min={fromDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className={fieldClass}
-          />
+        <div className="space-y-1.5">
+          <Label>{t("leavePublic.to")}</Label>
+          <Input type="date" required value={toDate} min={fromDate} onChange={(e) => setToDate(e.target.value)} />
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-foreground/90 mb-1">Reason</label>
-        <textarea
+      <div className="space-y-1.5">
+        <Label>{t("leavePublic.reason")}</Label>
+        <Textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={3}
-          placeholder="Brief reason (optional)"
-          className={`${fieldClass} resize-none`}
+          placeholder={t("leavePublic.reasonPlaceholder")}
+          className="resize-none"
         />
       </div>
 
@@ -157,17 +145,11 @@ export default function LeaveRequestForm({ baseUrl, orgSlug, employees, loadingE
         <div className="bg-destructive/10 border border-destructive/30 text-red-400 text-sm rounded-lg px-3 py-2">{error}</div>
       )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold rounded-lg disabled:opacity-50 transition-all"
-      >
-        {submitting ? "Submitting..." : "Submit Request"}
-      </button>
+      <Button type="submit" disabled={submitting} className="w-full" size="lg">
+        {submitting ? t("leavePublic.submitting") : t("leavePublic.submitRequest")}
+      </Button>
 
-      <p className="text-xs text-center text-muted-foreground">
-        By submitting, you confirm the details above are accurate.
-      </p>
+      <p className="text-xs text-center text-muted-foreground">{t("leavePublic.confirmNotice")}</p>
     </form>
   );
 }

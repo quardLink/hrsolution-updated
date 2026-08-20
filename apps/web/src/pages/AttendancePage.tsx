@@ -1,4 +1,6 @@
 import { Link } from "wouter";
+import { Lock, Building2, Check, Languages } from "lucide-react";
+import { useLocale } from "@/contexts/LocaleContext";
 import Clock from "../components/attendance/Clock";
 import ReminderBanner from "../components/attendance/ReminderBanner";
 import ActionStep from "../components/attendance/ActionStep";
@@ -15,13 +17,26 @@ import { useOrgInfo } from "../hooks/useOrgInfo";
 function KioskGlow() {
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden">
-      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-150 h-150 rounded-full bg-primary/20 blur-[120px]" />
-      <div className="absolute bottom-0 right-0 w-100 h-100 rounded-full bg-violet-600/10 blur-[100px]" />
+      <div className="absolute -top-40 start-1/2 -translate-x-1/2 w-150 h-150 rounded-full bg-primary/20 blur-[120px]" />
+      <div className="absolute bottom-0 end-0 w-100 h-100 rounded-full bg-violet-600/10 blur-[100px]" />
     </div>
   );
 }
 
+function LanguageToggle() {
+  const { locale, setLocale } = useLocale();
+  return (
+    <button
+      onClick={() => setLocale(locale === "en" ? "ar" : "en")}
+      className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors inline-flex items-center gap-1.5"
+    >
+      <Languages className="w-3.5 h-3.5" /> {locale === "en" ? "العربية" : "English"}
+    </button>
+  );
+}
+
 export default function AttendancePage() {
+  const { t } = useLocale();
   const {
     step,
     setStep,
@@ -56,12 +71,15 @@ export default function AttendancePage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
         <KioskGlow />
-        <Link
-          href="/admin"
-          className="absolute top-4 right-4 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors"
-        >
-          🔐 Admin
-        </Link>
+        <div className="absolute top-4 end-4 flex items-center gap-2">
+          <LanguageToggle />
+          <Link
+            href="/admin"
+            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors inline-flex items-center gap-1.5"
+          >
+            <Lock className="w-3.5 h-3.5" /> {t("kiosk.admin")}
+          </Link>
+        </div>
         <div
           className="flex flex-col items-center gap-8 relative"
           style={{ animation: "fadeIn 1s ease-out forwards" }}
@@ -71,16 +89,16 @@ export default function AttendancePage() {
               {org?.logoDataUrl ? (
                 <img src={org.logoDataUrl} alt="" className="w-full h-full object-contain" />
               ) : (
-                <span className="text-5xl">🏢</span>
+                <Building2 className="w-16 h-16 text-slate-400" />
               )}
             </div>
-            <div className="absolute -bottom-3 -right-3 w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg">
-              <span className="text-primary-foreground text-lg">✓</span>
+            <div className="absolute -bottom-3 -end-3 w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg">
+              <Check className="w-5 h-5 text-primary-foreground" />
             </div>
           </div>
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-foreground tracking-tight">{org?.name || "Attendance Kiosk"}</h1>
-            <p className="text-muted-foreground mt-2 text-lg">Employee Attendance System</p>
+            <h1 className="text-4xl font-bold text-foreground tracking-tight">{org?.name || t("kiosk.title")}</h1>
+            <p className="text-muted-foreground mt-2 text-lg">{t("kiosk.subtitle")}</p>
           </div>
           <div className="flex gap-2">
             {[0, 1, 2].map((i) => (
@@ -108,27 +126,28 @@ export default function AttendancePage() {
       <header className="px-6 lg:px-10 pt-5 pb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 relative">
         <div className="flex items-center gap-3">
           {org?.logoDataUrl && (
-            <div className="w-9 h-9 rounded-xl bg-white border border-border flex items-center justify-center p-1 flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-white border border-border flex items-center justify-center p-1 shrink-0">
               <img src={org.logoDataUrl} alt="" className="w-full h-full object-contain" />
             </div>
           )}
           <div>
             <h1 className="text-base font-bold text-foreground tracking-tight leading-none whitespace-nowrap">
-              {org?.name || "Attendance Kiosk"}
+              {org?.name || t("kiosk.title")}
             </h1>
             <p className="text-muted-foreground text-xs mt-1">
-              {step === "action" ? timeOfDay : SESSION_LABELS[session]}
+              {step === "action" ? t(timeOfDay) : t(SESSION_LABELS[session])}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <Clock />
+          <LanguageToggle />
           <Link
             href="/admin"
-            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors inline-flex items-center gap-1.5"
           >
-            🔐 Admin
+            <Lock className="w-3.5 h-3.5" /> {t("kiosk.admin")}
           </Link>
         </div>
       </header>

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Smartphone } from "lucide-react";
+import { useLocale } from "@/contexts/LocaleContext";
 import PinPad from "./PinPad";
 import { setDeviceToken } from "../../lib/deviceAuth";
 
@@ -8,6 +10,7 @@ interface Props {
 }
 
 export default function KioskPairingScreen({ baseUrl, onPaired }: Props) {
+  const { t } = useLocale();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -23,14 +26,14 @@ export default function KioskPairingScreen({ baseUrl, onPaired }: Props) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || "Pairing failed");
+        setError(data.error || t("kiosk.pairFailed"));
         setCode("");
         return;
       }
       setDeviceToken(data.token);
       onPaired();
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("kiosk.pairNetworkError"));
       setCode("");
     } finally {
       setSubmitting(false);
@@ -49,13 +52,11 @@ export default function KioskPairingScreen({ baseUrl, onPaired }: Props) {
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-150 h-150 rounded-full bg-primary/20 blur-[120px]" />
       <div className="w-full max-w-sm space-y-5 relative">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/15 flex items-center justify-center text-3xl mb-4">
-            📱
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/15 flex items-center justify-center mb-4">
+            <Smartphone className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">Pair This Kiosk</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Enter the 6-digit code from Settings → Kiosk Devices in the admin dashboard.
-          </p>
+          <h1 className="text-xl font-bold text-foreground">{t("kiosk.pairTitle")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("kiosk.pairSubtitle")}</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-7 shadow-xl space-y-6">
@@ -88,7 +89,7 @@ export default function KioskPairingScreen({ baseUrl, onPaired }: Props) {
           />
 
           {submitting && (
-            <div className="text-center text-primary text-sm font-medium animate-pulse">Pairing...</div>
+            <div className="text-center text-primary text-sm font-medium animate-pulse">{t("kiosk.pairing")}</div>
           )}
         </div>
       </div>

@@ -1,3 +1,5 @@
+import { ArrowLeft } from "lucide-react";
+import { useLocale } from "@/contexts/LocaleContext";
 import PinPad from "./PinPad";
 
 interface Props {
@@ -12,6 +14,7 @@ interface Props {
 }
 
 export default function PinStep({ employeeName, pin, pinError, isSubmitting, onBack, onDigit, onClear, onBackspace }: Props) {
+  const { t, dir } = useLocale();
   return (
     <div className="w-full max-w-sm space-y-5">
       <div className="flex items-center gap-3">
@@ -19,10 +22,10 @@ export default function PinStep({ employeeName, pin, pinError, isSubmitting, onB
           onClick={onBack}
           className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center text-foreground hover:border-primary/50 transition-colors"
         >
-          ←
+          <ArrowLeft className={`w-4 h-4 ${dir === "rtl" ? "rotate-180" : ""}`} />
         </button>
         <div>
-          <h2 className="text-xl font-bold text-foreground">Enter Your PIN</h2>
+          <h2 className="text-xl font-bold text-foreground">{t("kiosk.enterPin")}</h2>
           <p className="text-muted-foreground text-sm">{employeeName}</p>
         </div>
       </div>
@@ -53,7 +56,7 @@ export default function PinStep({ employeeName, pin, pinError, isSubmitting, onB
 
         {isSubmitting && (
           <div className="text-center text-primary text-sm font-medium animate-pulse">
-            Verifying...
+            {t("kiosk.verifying")}
           </div>
         )}
       </div>

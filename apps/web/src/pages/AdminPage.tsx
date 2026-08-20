@@ -14,7 +14,7 @@ import { useAdminAuth } from "../hooks/useAdminAuth";
 import { useAttendanceAnalytics } from "../hooks/useAttendanceAnalytics";
 import { exportAttendanceReportPdf } from "../lib/pdf/attendanceReport";
 import { AdminApiProvider } from "../contexts/AdminApiContext";
-import { LocaleProvider, useLocale } from "../contexts/LocaleContext";
+import { useLocale } from "../contexts/LocaleContext";
 
 export default function AdminPage() {
   const [view, setView] = useState<AdminView>("today");
@@ -60,60 +60,58 @@ export default function AdminPage() {
   const isReportView = view === "rankings" || view === "summary";
 
   return (
-    <LocaleProvider>
-      <AdminApiProvider value={{ baseUrl, onError: setError }}>
-        <AdminShell
-          view={view}
-          onViewChange={setView}
-          onLogout={handleLogout}
-          onRefresh={fetchLogs}
-          onTestSound={() => playChime()}
-          loading={loading}
-          orgName={org?.name}
-          logoDataUrl={org?.logoDataUrl}
-        >
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-red-400 rounded-xl p-3 lg:p-4 text-sm">
-              {error}
-            </div>
-          )}
+    <AdminApiProvider value={{ baseUrl, onError: setError }}>
+      <AdminShell
+        view={view}
+        onViewChange={setView}
+        onLogout={handleLogout}
+        onRefresh={fetchLogs}
+        onTestSound={() => playChime()}
+        loading={loading}
+        orgName={org?.name}
+        logoDataUrl={org?.logoDataUrl}
+      >
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/30 text-red-400 rounded-xl p-3 lg:p-4 text-sm">
+            {error}
+          </div>
+        )}
 
-          {view === "today" && <TodayTab logs={logs} employees={employees} />}
+        {view === "today" && <TodayTab logs={logs} employees={employees} />}
 
-          {isReportView && (
-            <ReportSection view={view}>
-              <ReportFilters
-                stats={stats}
-                filterFromDate={filterFromDate}
-                onFilterFromDateChange={setFilterFromDate}
-                filterToDate={filterToDate}
-                onFilterToDateChange={setFilterToDate}
-                filterEmployee={filterEmployee}
-                onFilterEmployeeChange={setFilterEmployee}
-                employees={employees}
-                onExportPdf={() =>
-                  exportAttendanceReportPdf({ stats, rankings, summary, filterFromDate, filterToDate })
-                }
-              />
+        {isReportView && (
+          <ReportSection view={view}>
+            <ReportFilters
+              stats={stats}
+              filterFromDate={filterFromDate}
+              onFilterFromDateChange={setFilterFromDate}
+              filterToDate={filterToDate}
+              onFilterToDateChange={setFilterToDate}
+              filterEmployee={filterEmployee}
+              onFilterEmployeeChange={setFilterEmployee}
+              employees={employees}
+              onExportPdf={() =>
+                exportAttendanceReportPdf({ stats, rankings, summary, filterFromDate, filterToDate })
+              }
+            />
 
-              {view === "rankings" && (
-                <RankingsView rankings={rankings} totalDaysInPeriod={totalDaysInPeriod} />
-              )}
+            {view === "rankings" && (
+              <RankingsView rankings={rankings} totalDaysInPeriod={totalDaysInPeriod} />
+            )}
 
-              {view === "summary" && <AttendanceSummaryView summary={summary} loading={loading} />}
-            </ReportSection>
-          )}
+            {view === "summary" && <AttendanceSummaryView summary={summary} loading={loading} />}
+          </ReportSection>
+        )}
 
-          {view === "employees" && <EmployeesTab />}
+        {view === "employees" && <EmployeesTab />}
 
-          {view === "leave" && <LeaveRequestsTab />}
+        {view === "leave" && <LeaveRequestsTab />}
 
-          {view === "payroll" && <PayrollTab />}
+        {view === "payroll" && <PayrollTab />}
 
-          {view === "settings" && <SettingsTab />}
-        </AdminShell>
-      </AdminApiProvider>
-    </LocaleProvider>
+        {view === "settings" && <SettingsTab />}
+      </AdminShell>
+    </AdminApiProvider>
   );
 }
 

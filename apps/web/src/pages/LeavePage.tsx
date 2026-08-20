@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "wouter";
+import { ArrowLeft, Palmtree, Languages } from "lucide-react";
+import { useLocale } from "@/contexts/LocaleContext";
 import LeaveRequestForm from "../components/leave/LeaveRequestForm";
 import LeaveRequestSuccess, { type LeaveRequestSuccessData } from "../components/leave/LeaveRequestSuccess";
 
@@ -9,6 +11,7 @@ interface PublicEmployee {
 }
 
 export default function LeavePage() {
+  const { t, dir, locale, setLocale } = useLocale();
   const baseUrl = useMemo(() => import.meta.env.BASE_URL.replace(/\/$/, ""), []);
   const { orgSlug } = useParams<{ orgSlug: string }>();
 
@@ -30,32 +33,41 @@ export default function LeavePage() {
           setOrgName(data.orgName ?? "");
         }
       } catch {
-        if (!cancelled) setLoadError("Could not load employee list. Please refresh.");
+        if (!cancelled) setLoadError(t("leavePublic.couldNotLoad"));
       } finally {
         if (!cancelled) setLoadingEmps(false);
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, orgSlug]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 sm:py-12">
       <div className="max-w-md mx-auto">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          ← Back to attendance
-        </Link>
+        <div className="flex items-center justify-between mb-4">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className={`w-4 h-4 ${dir === "rtl" ? "rotate-180" : ""}`} /> {t("leavePublic.backToAttendance")}
+          </Link>
+          <button
+            onClick={() => setLocale(locale === "en" ? "ar" : "en")}
+            className="px-2.5 py-1 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors inline-flex items-center gap-1.5"
+          >
+            <Languages className="w-3.5 h-3.5" /> {locale === "en" ? "العربية" : "English"}
+          </button>
+        </div>
 
         <div className="bg-card rounded-2xl shadow-lg border border-border overflow-hidden">
           <div className="px-5 sm:px-6 py-5 bg-gradient-to-br from-indigo-600 to-violet-700 text-white">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center text-2xl">
-                🏖️
+              <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center">
+                <Palmtree className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="font-bold text-lg leading-tight">Leave Request</h1>
+                <h1 className="font-bold text-lg leading-tight">{t("leavePublic.title")}</h1>
                 {orgName && <p className="text-xs text-white/80 mt-0.5">{orgName}</p>}
               </div>
             </div>

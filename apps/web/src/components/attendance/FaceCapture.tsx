@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Check } from "lucide-react";
+import { useLocale } from "@/contexts/LocaleContext";
 import { detectFaceDescriptor, detectFaceLandmarks, loadFaceModels, openCamera, stopCamera } from "../../lib/faceApi";
 import { createBlinkDetector } from "../../lib/liveness";
 
@@ -23,6 +25,7 @@ const LIVENESS_GRACE_MS = 7000;
 // to the camera. The descriptor never leaves this component as anything
 // but numbers; no photo is stored or sent anywhere.
 export default function FaceCapture({ employeeName, error, onCaptured, onBack }: Props) {
+  const { t, dir } = useLocale();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [retryKey, setRetryKey] = useState(0);
@@ -128,10 +131,10 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
           onClick={onBack}
           className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center text-foreground hover:border-primary/50 transition-colors"
         >
-          ←
+          <ArrowLeft className={`w-4 h-4 ${dir === "rtl" ? "rotate-180" : ""}`} />
         </button>
         <div>
-          <h2 className="text-xl font-bold text-foreground">Look at the Camera</h2>
+          <h2 className="text-xl font-bold text-foreground">{t("kiosk.lookAtCamera")}</h2>
           <p className="text-muted-foreground text-sm">{employeeName}</p>
         </div>
       </div>
@@ -151,22 +154,18 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
           <video ref={videoRef} muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
           {status === "found" && (
             <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-              <span className="text-4xl">✓</span>
+              <Check className="w-10 h-10 text-primary" />
             </div>
           )}
         </div>
 
         <div className="text-center text-sm font-medium">
-          {status === "loading" && <span className="text-muted-foreground">Starting camera...</span>}
-          {status === "scanning" && <span className="text-primary animate-pulse">Scanning for your face...</span>}
-          {status === "liveness" && <span className="text-primary animate-pulse">Blink to confirm it's you...</span>}
-          {status === "found" && <span className="text-primary">Face verified</span>}
-          {status === "denied" && (
-            <span className="text-red-400">
-              Camera access is blocked. Enable it in the browser settings for this kiosk, or ask your admin.
-            </span>
-          )}
-          {status === "error" && <span className="text-red-400">Face check hit a snag.</span>}
+          {status === "loading" && <span className="text-muted-foreground">{t("kiosk.faceStartingCamera")}</span>}
+          {status === "scanning" && <span className="text-primary animate-pulse">{t("kiosk.faceScanning")}</span>}
+          {status === "liveness" && <span className="text-primary animate-pulse">{t("kiosk.faceBlinkConfirm")}</span>}
+          {status === "found" && <span className="text-primary">{t("kiosk.faceVerified")}</span>}
+          {status === "denied" && <span className="text-red-400">{t("kiosk.faceDeniedLong")}</span>}
+          {status === "error" && <span className="text-red-400">{t("kiosk.faceSnag")}</span>}
         </div>
 
         {status === "error" && (
@@ -174,7 +173,7 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
             onClick={() => setRetryKey((k) => k + 1)}
             className="w-full py-2 text-sm font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-xl"
           >
-            Try Again
+            {t("common.tryAgain")}
           </button>
         )}
       </div>

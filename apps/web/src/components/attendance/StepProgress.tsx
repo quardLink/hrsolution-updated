@@ -1,14 +1,17 @@
+import { useLocale } from "@/contexts/LocaleContext";
 import type { Step } from "../../hooks/useAttendanceWizard";
+import type { TranslationKey } from "../../lib/i18n";
 
-const STEPS: { id: Step; label: string }[] = [
-  { id: "action", label: "Select" },
-  { id: "employee", label: "Identify" },
-  { id: "face", label: "Face" },
-  { id: "pin", label: "PIN" },
-  { id: "result", label: "Done" },
+const STEPS: { id: Step; labelKey: TranslationKey }[] = [
+  { id: "action", labelKey: "kiosk.stepSelect" },
+  { id: "employee", labelKey: "kiosk.stepIdentify" },
+  { id: "face", labelKey: "kiosk.stepFace" },
+  { id: "pin", labelKey: "kiosk.stepPin" },
+  { id: "result", labelKey: "kiosk.stepDone" },
 ];
 
 export default function StepProgress({ step }: { step: Step }) {
+  const { t } = useLocale();
   const currentIndex = STEPS.findIndex((s) => s.id === step);
 
   return (
@@ -29,7 +32,7 @@ export default function StepProgress({ step }: { step: Step }) {
                   active ? "text-foreground" : "text-muted-foreground/60"
                 }`}
               >
-                {s.label}
+                {t(s.labelKey)}
               </span>
             </div>
             {i < STEPS.length - 1 && <div className="w-4 sm:w-6 h-px bg-border" />}

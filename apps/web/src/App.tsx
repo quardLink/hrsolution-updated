@@ -8,6 +8,7 @@ import SignupPage from "@/pages/SignupPage";
 import LeavePage from "@/pages/LeavePage";
 import NotFound from "@/pages/not-found";
 import { isDeviceNotPaired } from "@/lib/deviceAuth";
+import { LocaleProvider } from "@/contexts/LocaleContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,12 +37,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <LocaleProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </LocaleProvider>
     </QueryClientProvider>
   );
 }
