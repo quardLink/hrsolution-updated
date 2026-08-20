@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useLocale } from "@/contexts/LocaleContext";
 import { useAdminApi } from "../../../contexts/AdminApiContext";
 import { adminFetch, toErrorMessage } from "../../../lib/adminApi";
 
@@ -20,8 +24,8 @@ interface PairingCode {
 
 // Small best-effort UA parser — just enough to tell devices apart at a
 // glance ("Chrome on Windows"), not meant to be exhaustive.
-function describeUserAgent(ua: string | null): string {
-  if (!ua) return "Unknown device";
+function describeUserAgent(ua: string | null, unknownLabel: string): string {
+  if (!ua) return unknownLabel;
   const browser = /Edg\//.test(ua)
     ? "Edge"
     : /Chrome\//.test(ua)
@@ -46,6 +50,7 @@ function describeUserAgent(ua: string | null): string {
 }
 
 export default function DevicesPanel() {
+  const { t, locale, dict } = useLocale();
   const { baseUrl, onError } = useAdminApi();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +108,7 @@ export default function DevicesPanel() {
   }
 
   async function revoke(id: string, name: string) {
-    if (!confirm(`Revoke "${name}"? It will stop being able to log attendance immediately.`)) return;
+    if (!confirm(dict.settings.devicesRevokeConfirm(name))) return;
     try {
       await adminFetch(baseUrl, `/api/admin/devices/${id}`, {
         method: "DELETE",
@@ -115,74 +120,75 @@ export default function DevicesPanel() {
     }
   }
 
+  const dateLocale = locale === "ar" ? "ar-SA" : "en-US";
+
   return (
     <div className="space-y-4 max-w-2xl">
-      <div className="bg-card rounded-xl border border-border p-4 lg:p-6">
-        <h2 className="text-lg lg:text-xl font-bold text-foreground mb-1">Kiosk Devices</h2>
-        <p className="text-sm text-muted-foreground mb-5">
-          Only paired devices can log attendance — this is what stops check-ins from anywhere
-          other than your physical kiosk. You can pair more than one (e.g. a second location) —
-          each shows its own browser and IP so you can tell them apart.
-        </p>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.devicesTitle")}</CardTitle>
+          <CardDescription>{t("settings.devicesSubtitle")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pairing ? (
+            <div className="text-center py-6 bg-background border rounded-xl">
+              <p className="text-xs text-muted-foreground mb-2">{t("settings.devicesEnterCode")}</p>
+              <p className="text-4xl font-bold tracking-[0.3em] font-mono">{pairing.code}</p>
+              <p className="text-xs text-muted-foreground mt-3">{t("settings.devicesExpiresIn")} {secondsLeft}s</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Input
+                value={deviceName}
+                onChange={(e) => setDeviceName(e.target.value)}
+                placeholder={t("settings.devicesNamePlaceholder")}
+              />
+              <Button onClick={generateCode} disabled={generating} className="w-full" size="lg">
+                {generating ? t("settings.devicesGenerating") : t("settings.devicesGenerate")}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {pairing ? (
-          <div className="text-center py-6 bg-background border border-border rounded-xl">
-            <p className="text-xs text-muted-foreground mb-2">Enter this code on the kiosk</p>
-            <p className="text-4xl font-bold tracking-[0.3em] text-foreground font-mono">{pairing.code}</p>
-            <p className="text-xs text-muted-foreground mt-3">Expires in {secondsLeft}s</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={deviceName}
-              onChange={(e) => setDeviceName(e.target.value)}
-              placeholder="Name this device (optional, e.g. Front Desk)"
-              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring text-sm"
-            />
-            <button
-              onClick={generateCode}
-              disabled={generating}
-              className="w-full bg-primary hover:opacity-90 text-primary-foreground font-semibold py-3 rounded-xl disabled:opacity-50"
-            >
-              {generating ? "Generating..." : "Generate Pairing Code"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-card rounded-xl border border-border p-4 lg:p-6">
-        <h3 className="text-sm font-bold text-foreground mb-3">Paired Devices</h3>
-        {loading ? (
-          <div className="text-center py-6 text-muted-foreground text-sm">Loading...</div>
-        ) : devices.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground text-sm">No devices paired yet.</div>
-        ) : (
-          <div className="divide-y divide-border">
-            {devices.map((d) => (
-              <div key={d.id} className="flex items-center justify-between py-3 gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium text-foreground text-sm">{d.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {describeUserAgent(d.userAgent)}
-                    {(d.pairedLocation || d.pairedIp) && ` · Paired from ${d.pairedLocation || d.pairedIp}`}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">{t("settings.devicesPaired")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">{t("common.loading")}</div>
+          ) : devices.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">{t("settings.devicesNone")}</div>
+          ) : (
+            <div className="divide-y">
+              {devices.map((d) => (
+                <div key={d.id} className="flex items-center justify-between py-3 gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm">{d.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {describeUserAgent(d.userAgent, t("settings.devicesUnknown"))}
+                      {(d.pairedLocation || d.pairedIp) && ` · ${t("settings.devicesPairedFrom")} ${d.pairedLocation || d.pairedIp}`}
+                    </div>
+                    <div className="text-xs text-muted-foreground/70 mt-0.5">
+                      {t("settings.devicesPairedOn")} {new Date(d.pairedAt).toLocaleDateString(dateLocale)}
+                      {d.lastSeenAt && ` · ${t("settings.devicesLastSeen")} ${new Date(d.lastSeenAt).toLocaleString(dateLocale)}`}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground/70 mt-0.5">
-                    Paired {new Date(d.pairedAt).toLocaleDateString()}
-                    {d.lastSeenAt && ` · Last seen ${new Date(d.lastSeenAt).toLocaleString()}`}
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => revoke(d.id, d.name)}
+                    className="text-red-500 hover:text-red-500 shrink-0"
+                  >
+                    {t("settings.devicesRevoke")}
+                  </Button>
                 </div>
-                <button
-                  onClick={() => revoke(d.id, d.name)}
-                  className="px-3 py-1.5 text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-xs font-medium flex-shrink-0"
-                >
-                  Revoke
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

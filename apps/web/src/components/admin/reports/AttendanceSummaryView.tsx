@@ -1,3 +1,7 @@
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { useLocale } from "@/contexts/LocaleContext";
 import { formatDate, formatTime } from "../../../lib/attendance";
 import type { DaySummary } from "../../../hooks/useAttendanceAnalytics";
 
@@ -7,74 +11,71 @@ interface Props {
 }
 
 export default function AttendanceSummaryView({ summary, loading }: Props) {
+  const { t } = useLocale();
   return (
-    <div className="bg-card rounded-xl border border-border overflow-hidden">
-      <div className="px-4 py-3 border-b border-border bg-muted/30">
-        <h2 className="font-semibold text-foreground">Daily Attendance Summary</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">{summary.length} record(s)</p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs uppercase text-muted-foreground bg-muted/30 border-b border-border">
-              <th className="px-4 py-3 text-left">Date</th>
-              <th className="px-4 py-3 text-left">Employee</th>
-              <th className="px-4 py-3 text-left">First Check-In</th>
-              <th className="px-4 py-3 text-left">Last Check-Out</th>
-              <th className="px-4 py-3 text-left">Hours</th>
-              <th className="px-4 py-3 text-left">Late</th>
-              <th className="px-4 py-3 text-left">Status</th>
-            </tr>
-          </thead>
-          <tbody>
+    <Card className="overflow-hidden py-0 gap-0">
+      <CardHeader className="border-b py-3.5">
+        <div className="font-semibold text-sm">{t("reports.summaryTitle")}</div>
+        <p className="text-xs text-muted-foreground mt-0.5">{summary.length} {t("reports.records")}</p>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="ps-5">{t("reports.colDate")}</TableHead>
+              <TableHead>{t("reports.colEmployee")}</TableHead>
+              <TableHead>{t("reports.colFirstCheckIn")}</TableHead>
+              <TableHead>{t("reports.colLastCheckOut")}</TableHead>
+              <TableHead>{t("reports.colHours")}</TableHead>
+              <TableHead>{t("reports.colLate")}</TableHead>
+              <TableHead className="pe-5">{t("common.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {summary.map((s, i) => (
-              <tr key={i} className={`border-b border-border/60 hover:bg-muted/30 ${s.hasAnomaly ? "bg-amber-500/5" : ""}`}>
-                <td className="px-4 py-3 text-foreground font-medium">{formatDate(s.dateObj)}</td>
-                <td className="px-4 py-3">
-                  <div className="font-medium text-foreground">{s.employeeName}</div>
+              <TableRow key={i} className={s.hasAnomaly ? "bg-amber-500/5" : ""}>
+                <TableCell className="ps-5 font-medium">{formatDate(s.dateObj)}</TableCell>
+                <TableCell>
+                  <div className="font-medium">{s.employeeName}</div>
                   <div className="text-xs text-muted-foreground">{s.employeeId}</div>
-                </td>
-                <td className="px-4 py-3 text-foreground/80">
+                </TableCell>
+                <TableCell className="text-foreground/80">
                   {s.firstCheckIn ? formatTime(s.firstCheckIn) : <span className="text-muted-foreground">—</span>}
-                </td>
-                <td className="px-4 py-3 text-foreground/80">
-                  {s.lastCheckOut ? formatTime(s.lastCheckOut) : <span className="text-red-400 font-medium">Missing</span>}
-                </td>
-                <td className="px-4 py-3 text-foreground/80">
+                </TableCell>
+                <TableCell className="text-foreground/80">
+                  {s.lastCheckOut ? formatTime(s.lastCheckOut) : <span className="text-red-500 font-medium">{t("reports.missing")}</span>}
+                </TableCell>
+                <TableCell className="text-foreground/80">
                   {s.totalHours > 0 ? `${s.totalHours.toFixed(1)} h` : <span className="text-muted-foreground">—</span>}
-                </td>
-                <td className="px-4 py-3">
+                </TableCell>
+                <TableCell>
                   {s.minutesLate > 0 ? (
-                    <span className="text-amber-400 font-medium">{s.minutesLate}m</span>
+                    <span className="text-amber-500 font-medium">{s.minutesLate}m</span>
                   ) : s.firstCheckIn ? (
-                    <span className="text-emerald-400 font-medium">On time</span>
+                    <span className="text-emerald-500 font-medium">{t("reports.onTime")}</span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
-                </td>
-                <td className="px-4 py-3">
+                </TableCell>
+                <TableCell className="pe-5">
                   {s.hasAnomaly ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400">
-                      ⚠ {s.anomalyReason}
-                    </span>
+                    <Badge variant="outline" className="border-transparent bg-amber-500/10 text-amber-500">⚠ {s.anomalyReason}</Badge>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400">
-                      ✓ Complete
-                    </span>
+                    <Badge variant="outline" className="border-transparent bg-emerald-500/10 text-emerald-500">✓ {t("reports.complete")}</Badge>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {summary.length === 0 && !loading && (
-              <tr>
-                <td colSpan={7} className="text-center py-12 text-muted-foreground">
-                  No records found for the selected filters
-                </td>
-              </tr>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  {t("reports.noRecordsFiltered")}
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

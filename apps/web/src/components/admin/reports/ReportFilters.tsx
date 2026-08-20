@@ -1,3 +1,10 @@
+import { Download } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLocale } from "@/contexts/LocaleContext";
 import StatCard from "./StatCard";
 import type { AttendanceReportStats } from "../../../lib/pdf/attendanceReport";
 
@@ -29,58 +36,48 @@ export default function ReportFilters({
   employees,
   onExportPdf,
 }: Props) {
+  const { t } = useLocale();
   return (
     <>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
-        <StatCard label="Total Records" value={stats.totalRecords} color="blue" />
-        <StatCard label="Check-Ins" value={stats.totalCheckIns} color="emerald" />
-        <StatCard label="Check-Outs" value={stats.totalCheckOuts} color="indigo" />
-        <StatCard label="Days Tracked" value={stats.uniqueDays} color="violet" />
-        <StatCard label="Anomalies" value={stats.anomalies} color="amber" />
+        <StatCard label={t("reports.totalRecords")} value={stats.totalRecords} color="blue" />
+        <StatCard label={t("reports.checkIns")} value={stats.totalCheckIns} color="emerald" />
+        <StatCard label={t("reports.checkOuts")} value={stats.totalCheckOuts} color="indigo" />
+        <StatCard label={t("reports.daysTracked")} value={stats.uniqueDays} color="violet" />
+        <StatCard label={t("reports.anomalies")} value={stats.anomalies} color="amber" />
       </div>
 
-      <div className="bg-card rounded-xl border border-border p-3 lg:p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">From Date</label>
-            <input
-              type="date"
-              value={filterFromDate}
-              onChange={(e) => onFilterFromDateChange(e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
+      <Card>
+        <CardContent className="py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">{t("reports.fromDate")}</Label>
+              <Input type="date" value={filterFromDate} onChange={(e) => onFilterFromDateChange(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">{t("reports.toDate")}</Label>
+              <Input type="date" value={filterToDate} onChange={(e) => onFilterToDateChange(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">{t("reports.employee")}</Label>
+              <Select value={filterEmployee} onValueChange={onFilterEmployeeChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("reports.allEmployees")}</SelectItem>
+                  {employees.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.name} ({e.id})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={onExportPdf} variant="secondary" className="w-full">
+              <Download /> {t("reports.exportPdf")}
+            </Button>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">To Date</label>
-            <input
-              type="date"
-              value={filterToDate}
-              onChange={(e) => onFilterToDateChange(e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Employee</label>
-            <select
-              value={filterEmployee}
-              onChange={(e) => onFilterEmployeeChange(e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="all">All Employees</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>{e.name} ({e.id})</option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={onExportPdf}
-            className="w-full px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-            title="Generate professional PDF report"
-          >
-            📄 Export PDF
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </>
   );
 }

@@ -1,9 +1,17 @@
 import { useState } from "react";
+import { Plus, Search } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useLocale } from "@/contexts/LocaleContext";
 import { useEmployees, type Employee } from "../../hooks/useEmployees";
 import EmployeeList from "./employees/EmployeeList";
 import EmployeeFormModal from "./employees/EmployeeFormModal";
 
 export default function EmployeesTab() {
+  const { t } = useLocale();
   const { employees, roles, loading, saveEmployee, deactivate, reactivate } = useEmployees();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
@@ -27,48 +35,47 @@ export default function EmployeesTab() {
   });
 
   return (
-    <div className="bg-card rounded-xl border border-border">
-      <div className="p-4 lg:p-5 border-b border-border">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <h2 className="text-lg lg:text-xl font-bold text-foreground">Employees</h2>
-            <p className="text-sm text-muted-foreground hidden sm:block">Add, edit, or deactivate employees and their PINs.</p>
-          </div>
-          <button
-            onClick={openAdd}
-            className="px-3 lg:px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium rounded-lg whitespace-nowrap"
-          >
-            + Add
-          </button>
+    <div className="space-y-5 lg:space-y-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-semibold tracking-tight">{t("employees.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">{t("employees.subtitle")}</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="search"
-            placeholder="Search by name or ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-          <label className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-            <input
-              type="checkbox"
-              checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-              className="rounded accent-primary"
-            />
-            Show inactive
-          </label>
-        </div>
+        <Button onClick={openAdd}>
+          <Plus /> {t("employees.addEmployee")}
+        </Button>
       </div>
 
-      <EmployeeList
-        employees={visible}
-        roles={roles}
-        loading={loading}
-        onEdit={openEdit}
-        onDeactivate={deactivate}
-        onReactivate={reactivate}
-      />
+      <Card className="overflow-hidden py-0 gap-0">
+        <CardHeader className="border-b py-3.5">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder={t("employees.searchPlaceholder")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="ps-9"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+              <Switch checked={showInactive} onCheckedChange={setShowInactive} />
+              {t("employees.showInactive")}
+            </label>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <EmployeeList
+            employees={visible}
+            roles={roles}
+            loading={loading}
+            onEdit={openEdit}
+            onDeactivate={deactivate}
+            onReactivate={reactivate}
+          />
+        </CardContent>
+      </Card>
 
       {showForm && (
         <EmployeeFormModal

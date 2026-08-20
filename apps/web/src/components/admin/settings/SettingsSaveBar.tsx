@@ -1,3 +1,7 @@
+import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLocale } from "@/contexts/LocaleContext";
+
 interface Props {
   isDirty: boolean;
   saving: boolean;
@@ -6,28 +10,24 @@ interface Props {
 }
 
 export default function SettingsSaveBar({ isDirty, saving, savedAt, onReset }: Props) {
+  const { t } = useLocale();
   return (
-    <div className="mt-8 pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div className="text-sm">
-        {savedAt && <span className="text-emerald-400 font-medium">✓ Saved</span>}
-        {isDirty && !savedAt && <span className="text-amber-400">Unsaved changes</span>}
+        {savedAt && (
+          <span className="text-emerald-500 font-medium inline-flex items-center gap-1">
+            <Check className="w-4 h-4" /> {t("settings.saved")}
+          </span>
+        )}
+        {isDirty && !savedAt && <span className="text-amber-500">{t("settings.unsaved")}</span>}
       </div>
-      <div className="flex gap-2 sm:ml-auto">
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={!isDirty || saving}
-          className="flex-1 sm:flex-initial px-4 py-2 text-foreground/80 hover:bg-muted rounded-lg text-sm font-medium disabled:opacity-40"
-        >
-          Reset
-        </button>
-        <button
-          type="submit"
-          disabled={!isDirty || saving}
-          className="flex-1 sm:flex-initial px-6 py-2 bg-primary hover:opacity-90 text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-40"
-        >
-          {saving ? "Saving..." : "Save Settings"}
-        </button>
+      <div className="flex gap-2 sm:ms-auto">
+        <Button type="button" variant="ghost" onClick={onReset} disabled={!isDirty || saving} className="flex-1 sm:flex-initial">
+          {t("common.reset")}
+        </Button>
+        <Button type="submit" disabled={!isDirty || saving} className="flex-1 sm:flex-initial">
+          {saving ? t("common.saving") : t("settings.saveSettings")}
+        </Button>
       </div>
     </div>
   );

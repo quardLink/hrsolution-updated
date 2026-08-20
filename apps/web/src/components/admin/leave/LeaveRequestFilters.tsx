@@ -1,3 +1,7 @@
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLocale } from "@/contexts/LocaleContext";
+
 type FilterValue = "all" | "pending" | "approved" | "rejected";
 
 const FILTERS: FilterValue[] = ["pending", "approved", "rejected", "all"];
@@ -9,19 +13,24 @@ interface Props {
 }
 
 export default function LeaveRequestFilters({ filter, onFilterChange, onNew }: Props) {
+  const { t } = useLocale();
+  const filterLabel: Record<FilterValue, string> = {
+    all: t("leave.filterAll"),
+    pending: t("leave.filterPending"),
+    approved: t("leave.filterApproved"),
+    rejected: t("leave.filterRejected"),
+  };
+
   return (
-    <div className="p-4 lg:p-5 border-b border-border">
+    <div className="p-4 lg:p-5 border-b">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h2 className="text-lg lg:text-xl font-bold text-foreground">Leave Requests</h2>
-          <p className="text-sm text-muted-foreground hidden sm:block">Track and manage time-off requests.</p>
+          <h2 className="text-lg lg:text-xl font-semibold">{t("leave.title")}</h2>
+          <p className="text-sm text-muted-foreground hidden sm:block">{t("leave.subtitle")}</p>
         </div>
-        <button
-          onClick={onNew}
-          className="px-3 lg:px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium rounded-lg whitespace-nowrap"
-        >
-          + New
-        </button>
+        <Button onClick={onNew}>
+          <Plus /> {t("leave.new")}
+        </Button>
       </div>
 
       <div className="flex gap-1 overflow-x-auto -mx-1 px-1">
@@ -29,11 +38,11 @@ export default function LeaveRequestFilters({ filter, onFilterChange, onNew }: P
           <button
             key={f}
             onClick={() => onFilterChange(f)}
-            className={`px-3 py-1.5 text-sm rounded-md capitalize transition-colors whitespace-nowrap ${
-              filter === f ? "bg-primary/15 text-indigo-300 font-medium" : "text-muted-foreground hover:bg-muted"
+            className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
+              filter === f ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"
             }`}
           >
-            {f}
+            {filterLabel[f]}
           </button>
         ))}
       </div>

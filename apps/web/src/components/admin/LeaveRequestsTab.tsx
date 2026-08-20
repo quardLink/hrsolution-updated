@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { useLeaveRequests } from "../../hooks/useLeaveRequests";
 import LeaveRequestFilters from "./leave/LeaveRequestFilters";
 import LeaveRequestList from "./leave/LeaveRequestList";
@@ -14,14 +15,16 @@ export default function LeaveRequestsTab() {
   const filtered = filter === "all" ? requests : requests.filter((r) => r.status === filter);
 
   return (
-    <div className="bg-card rounded-xl border border-border">
+    <Card className="overflow-hidden py-0 gap-0">
       <LeaveRequestFilters filter={filter} onFilterChange={setFilter} onNew={() => setShowForm(true)} />
 
-      <LeaveRequestList requests={filtered} loading={loading} filter={filter} onUpdateStatus={updateStatus} />
+      <CardContent className="p-0">
+        <LeaveRequestList requests={filtered} loading={loading} filter={filter} onUpdateStatus={updateStatus} />
+      </CardContent>
 
       {showForm && (
         <NewLeaveRequestModal employees={employees} onClose={() => setShowForm(false)} onSubmit={submitRequest} />
       )}
-    </div>
+    </Card>
   );
 }

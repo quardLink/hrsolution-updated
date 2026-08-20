@@ -1,5 +1,36 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
+import {
+  Home,
+  Trophy,
+  BarChart3,
+  Wallet,
+  Users,
+  CalendarDays,
+  Settings,
+  RefreshCw,
+  Volume2,
+  LogOut,
+  Monitor,
+  Languages,
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarSeparator,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { useLocale } from "@/contexts/LocaleContext";
 
 export type AdminView =
   | "today"
@@ -12,19 +43,22 @@ export type AdminView =
 
 interface NavItem {
   id: AdminView;
-  label: string;
-  icon: string;
-  group: number;
+  labelKey: "nav.today" | "nav.rankings" | "nav.records" | "nav.payroll" | "nav.employees" | "nav.leave" | "nav.settings";
+  icon: typeof Home;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { id: "today", label: "Today", icon: "🏠", group: 0 },
-  { id: "rankings", label: "Rankings", icon: "🏆", group: 1 },
-  { id: "summary", label: "Records", icon: "📊", group: 1 },
-  { id: "payroll", label: "Payroll", icon: "💰", group: 1 },
-  { id: "employees", label: "Employees", icon: "👥", group: 2 },
-  { id: "leave", label: "Leave", icon: "🏖️", group: 2 },
-  { id: "settings", label: "Settings", icon: "⚙️", group: 2 },
+const NAV_GROUPS: NavItem[][] = [
+  [{ id: "today", labelKey: "nav.today", icon: Home }],
+  [
+    { id: "rankings", labelKey: "nav.rankings", icon: Trophy },
+    { id: "summary", labelKey: "nav.records", icon: BarChart3 },
+    { id: "payroll", labelKey: "nav.payroll", icon: Wallet },
+  ],
+  [
+    { id: "employees", labelKey: "nav.employees", icon: Users },
+    { id: "leave", labelKey: "nav.leave", icon: CalendarDays },
+    { id: "settings", labelKey: "nav.settings", icon: Settings },
+  ],
 ];
 
 interface Props {
@@ -50,81 +84,116 @@ export default function AdminShell({
   logoDataUrl,
   children,
 }: Props) {
+  const { t, locale, setLocale, dir } = useLocale();
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 lg:px-6">
-          <div className="h-14 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {logoDataUrl && (
-                <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center p-1 flex-shrink-0">
-                  <img src={logoDataUrl} alt="" className="w-full h-full object-contain" />
-                </div>
-              )}
-              <span className="font-semibold text-foreground text-sm truncate">{orgName || "Your Firm"}</span>
-            </div>
-
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={onRefresh}
-                disabled={loading}
-                className="p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg disabled:opacity-50"
-                title="Refresh data"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={loading ? "animate-spin" : ""}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-              </button>
-              <button
-                onClick={onTestSound}
-                className="hidden sm:inline-flex p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg"
-                title="Test sound"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              </button>
-              <div className="w-px h-5 bg-border mx-1.5" />
-              <Link
-                href="/"
-                className="hidden sm:inline-flex items-center px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
-              >
-                Kiosk
-              </Link>
-              <button
-                onClick={onLogout}
-                className="px-2.5 py-1.5 text-sm text-red-400 hover:bg-destructive/10 hover:text-red-300 rounded-lg"
-              >
-                Sign Out
-              </button>
-            </div>
+    <SidebarProvider>
+      <Sidebar side={dir === "rtl" ? "right" : "left"} collapsible="icon">
+        <SidebarHeader>
+          <div className="flex items-center gap-2.5 px-2 py-1.5 min-w-0">
+            {logoDataUrl ? (
+              <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center p-1 shrink-0">
+                <img src={logoDataUrl} alt="" className="w-full h-full object-contain" />
+              </div>
+            ) : (
+              <div className="w-7 h-7 rounded-md bg-primary/15 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                {(orgName || "F")[0].toUpperCase()}
+              </div>
+            )}
+            <span className="font-semibold text-sm truncate group-data-[collapsible=icon]:hidden">
+              {orgName || "Your Firm"}
+            </span>
           </div>
+        </SidebarHeader>
 
-          <nav className="flex items-center gap-1 overflow-x-auto overflow-y-hidden -mx-4 px-4 lg:mx-0 lg:px-0">
-            {NAV_ITEMS.map((item, i) => {
-              const active = view === item.id;
-              const prevGroup = i > 0 ? NAV_ITEMS[i - 1].group : item.group;
-              return (
-                <span key={item.id} className="flex items-center">
-                  {item.group !== prevGroup && <span className="w-px h-4 bg-border mx-2" />}
-                  <button
-                    onClick={() => onViewChange(item.id)}
-                    className={`relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-                      active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <span className="text-xs">{item.icon}</span>
-                    <span>{item.label}</span>
-                    {active && (
-                      <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full" />
-                    )}
-                  </button>
-                </span>
-              );
-            })}
-          </nav>
-        </div>
-      </header>
+        <SidebarContent>
+          {NAV_GROUPS.map((group, i) => (
+            <div key={i}>
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.map((item) => (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          isActive={view === item.id}
+                          onClick={() => onViewChange(item.id)}
+                          tooltip={t(item.labelKey)}
+                        >
+                          <item.icon />
+                          <span>{t(item.labelKey)}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+              {i < NAV_GROUPS.length - 1 && <SidebarSeparator />}
+            </div>
+          ))}
+        </SidebarContent>
 
-      <main className="max-w-6xl w-full mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-4 lg:space-y-6">
-        {children}
-      </main>
-    </div>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setLocale(locale === "en" ? "ar" : "en")}
+                tooltip={t("common.language")}
+              >
+                <Languages />
+                <span>{locale === "en" ? "العربية" : "English"}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip={t("nav.kiosk")}>
+                <Link href="/">
+                  <Monitor />
+                  <span>{t("nav.kiosk")}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={onLogout}
+                tooltip={t("nav.signOut")}
+                className="text-red-400 hover:text-red-300 hover:bg-destructive/10"
+              >
+                <LogOut />
+                <span>{t("nav.signOut")}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+
+      <SidebarInset>
+        <header className="sticky top-0 z-20 flex items-center gap-2 h-14 px-4 lg:px-6 border-b border-border bg-background/80 backdrop-blur-md">
+          <SidebarTrigger className="-ms-1" />
+          <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRefresh}
+            disabled={loading}
+            title={t("common.refresh")}
+            className="text-muted-foreground"
+          >
+            <RefreshCw className={loading ? "animate-spin" : ""} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onTestSound}
+            title={t("common.testSound")}
+            className="hidden sm:inline-flex text-muted-foreground"
+          >
+            <Volume2 />
+          </Button>
+        </header>
+
+        <main className="flex-1 w-full px-4 lg:px-8 py-6 lg:py-8 space-y-5 lg:space-y-6 max-w-7xl mx-auto">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

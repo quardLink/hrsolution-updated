@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { useLocale } from "@/contexts/LocaleContext";
 import { detectFaceDescriptor, loadFaceModels, openCamera, stopCamera } from "../../../lib/faceApi";
 
 interface Props {
@@ -19,6 +22,7 @@ interface Props {
 type Status = "loading" | "ready" | "analyzing" | "denied" | "not_found" | "error";
 
 export default function FaceEnroll({ currentlyEnrolled, pending, onCapture, onClear }: Props) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>("loading");
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -81,12 +85,9 @@ export default function FaceEnroll({ currentlyEnrolled, pending, onCapture, onCl
   const willBeEnrolled = pending === undefined ? currentlyEnrolled : pending !== null;
 
   return (
-    <div className="border-t border-border pt-4">
-      <label className="block text-sm font-medium text-foreground/90 mb-1">Face Verification</label>
-      <p className="text-xs text-muted-foreground mb-3">
-        Once enrolled, the kiosk requires this employee's face to match before accepting a PIN — stops a coworker
-        from checking them in.
-      </p>
+    <div className="border-t pt-4">
+      <Label className="block text-sm font-medium mb-1">{t("employees.faceSectionTitle")}</Label>
+      <p className="text-xs text-muted-foreground mb-3">{t("employees.faceSectionHint")}</p>
 
       {!open ? (
         <div className="flex items-center gap-3">
@@ -95,54 +96,48 @@ export default function FaceEnroll({ currentlyEnrolled, pending, onCapture, onCl
               willBeEnrolled ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
             }`}
           >
-            {willBeEnrolled ? "✓ Enrolled" : "Not enrolled"}
+            {willBeEnrolled ? `✓ ${t("employees.faceEnrolled")}` : t("employees.faceNotEnrolled")}
           </span>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="px-3 py-1.5 text-xs font-medium bg-muted hover:bg-muted/70 text-foreground rounded-lg"
-          >
-            {willBeEnrolled ? "Re-enroll" : "Enroll Face"}
-          </button>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(true)}>
+            {willBeEnrolled ? t("employees.faceReEnroll") : t("employees.faceEnroll")}
+          </Button>
           {willBeEnrolled && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={onClear}
-              className="px-3 py-1.5 text-xs font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-lg"
+              className="text-red-500 hover:text-red-500"
             >
-              Remove
-            </button>
+              {t("common.remove")}
+            </Button>
           )}
         </div>
       ) : (
-        <div className="bg-background border border-border rounded-xl p-4 space-y-3">
-          <div className="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-border bg-muted">
+        <div className="bg-background border rounded-xl p-4 space-y-3">
+          <div className="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 bg-muted">
             <video ref={videoRef} muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
           </div>
           <div className="text-center text-xs font-medium min-h-4">
-            {status === "loading" && <span className="text-muted-foreground">Starting camera...</span>}
-            {status === "ready" && <span className="text-muted-foreground">Center the employee's face, then capture</span>}
-            {status === "analyzing" && <span className="text-primary animate-pulse">Analyzing...</span>}
-            {status === "not_found" && <span className="text-red-400">No face detected — try again</span>}
-            {status === "denied" && <span className="text-red-400">Camera access denied</span>}
-            {status === "error" && <span className="text-red-400">Face check hit a snag — try again</span>}
+            {status === "loading" && <span className="text-muted-foreground">{t("employees.faceStartingCamera")}</span>}
+            {status === "ready" && <span className="text-muted-foreground">{t("employees.faceReadyToCapture")}</span>}
+            {status === "analyzing" && <span className="text-primary animate-pulse">{t("employees.faceAnalyzing")}</span>}
+            {status === "not_found" && <span className="text-red-500">{t("employees.faceNotFound")}</span>}
+            {status === "denied" && <span className="text-red-500">{t("employees.faceDenied")}</span>}
+            {status === "error" && <span className="text-red-500">{t("employees.faceError")}</span>}
           </div>
           <div className="flex justify-center gap-2">
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={capture}
               disabled={status !== "ready" && status !== "not_found" && status !== "error"}
-              className="px-4 py-1.5 text-xs font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-lg disabled:opacity-50"
             >
-              {status === "analyzing" ? "Analyzing..." : "Capture"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="px-4 py-1.5 text-xs font-medium text-foreground/80 hover:bg-muted rounded-lg"
-            >
-              Cancel
-            </button>
+              {status === "analyzing" ? t("employees.faceAnalyzing") : t("employees.faceCapture")}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
           </div>
         </div>
       )}

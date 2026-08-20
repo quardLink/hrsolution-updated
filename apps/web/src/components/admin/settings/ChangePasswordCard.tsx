@@ -1,8 +1,14 @@
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { useLocale } from "@/contexts/LocaleContext";
 import { useAdminApi } from "../../../contexts/AdminApiContext";
 import { adminFetch, toErrorMessage } from "../../../lib/adminApi";
 
 export default function ChangePasswordCard() {
+  const { t } = useLocale();
   const { baseUrl } = useAdminApi();
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
@@ -12,15 +18,15 @@ export default function ChangePasswordCard() {
     e.preventDefault();
     setPwMsg(null);
     if (!pwForm.current || !pwForm.next) {
-      setPwMsg({ kind: "err", text: "Please fill in all fields" });
+      setPwMsg({ kind: "err", text: t("settings.passwordFillAll") });
       return;
     }
     if (pwForm.next.length < 8) {
-      setPwMsg({ kind: "err", text: "New password must be at least 8 characters" });
+      setPwMsg({ kind: "err", text: t("settings.passwordTooShort") });
       return;
     }
     if (pwForm.next !== pwForm.confirm) {
-      setPwMsg({ kind: "err", text: "New password and confirmation don't match" });
+      setPwMsg({ kind: "err", text: t("settings.passwordMismatch") });
       return;
     }
     setPwSaving(true);
@@ -30,7 +36,7 @@ export default function ChangePasswordCard() {
         body: { oldPassword: pwForm.current, newPassword: pwForm.next },
         errorMessage: "Failed to change password",
       });
-      setPwMsg({ kind: "ok", text: "Password changed. Please use the new password next time you sign in." });
+      setPwMsg({ kind: "ok", text: t("settings.passwordChanged") });
       setPwForm({ current: "", next: "", confirm: "" });
     } catch (err) {
       setPwMsg({ kind: "err", text: toErrorMessage(err) });
@@ -40,68 +46,59 @@ export default function ChangePasswordCard() {
   }
 
   return (
-    <form
-      onSubmit={changePassword}
-      className="bg-card rounded-xl border border-border p-4 lg:p-6"
-    >
-      <h2 className="text-lg lg:text-xl font-bold text-foreground mb-1">Admin Password</h2>
-      <p className="text-sm text-muted-foreground mb-5">Used to sign in to this dashboard.</p>
-
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-foreground/90 mb-1">Current Password</label>
-          <input
-            type="password"
-            value={pwForm.current}
-            onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            autoComplete="current-password"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground/90 mb-1">New Password</label>
-          <input
-            type="password"
-            value={pwForm.next}
-            onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            autoComplete="new-password"
-          />
-          <p className="text-xs text-muted-foreground mt-1">At least 8 characters.</p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground/90 mb-1">Confirm New Password</label>
-          <input
-            type="password"
-            value={pwForm.confirm}
-            onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            autoComplete="new-password"
-          />
-        </div>
-
-        {pwMsg && (
-          <div
-            className={`text-sm rounded-lg px-3 py-2 ${
-              pwMsg.kind === "ok"
-                ? "bg-emerald-500/10 text-emerald-400"
-                : "bg-destructive/10 text-red-400"
-            }`}
-          >
-            {pwMsg.text}
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.passwordTitle")}</CardTitle>
+        <CardDescription>{t("settings.passwordSubtitle")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={changePassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>{t("settings.currentPassword")}</Label>
+            <Input
+              type="password"
+              value={pwForm.current}
+              onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
+              autoComplete="current-password"
+            />
           </div>
-        )}
+          <div className="space-y-1.5">
+            <Label>{t("settings.newPassword")}</Label>
+            <Input
+              type="password"
+              value={pwForm.next}
+              onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
+              autoComplete="new-password"
+            />
+            <p className="text-xs text-muted-foreground">{t("settings.newPasswordHint")}</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("settings.confirmPassword")}</Label>
+            <Input
+              type="password"
+              value={pwForm.confirm}
+              onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+              autoComplete="new-password"
+            />
+          </div>
 
-        <div className="pt-2 border-t border-border flex justify-end">
-          <button
-            type="submit"
-            disabled={pwSaving}
-            className="px-5 py-2 bg-primary hover:opacity-90 text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
-          >
-            {pwSaving ? "Saving..." : "Change Password"}
-          </button>
-        </div>
-      </div>
-    </form>
+          {pwMsg && (
+            <div
+              className={`text-sm rounded-lg px-3 py-2 ${
+                pwMsg.kind === "ok" ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-red-500"
+              }`}
+            >
+              {pwMsg.text}
+            </div>
+          )}
+
+          <div className="pt-2 border-t flex justify-end">
+            <Button type="submit" disabled={pwSaving}>
+              {pwSaving ? t("common.saving") : t("settings.changePassword")}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
