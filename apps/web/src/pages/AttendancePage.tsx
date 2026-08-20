@@ -3,6 +3,7 @@ import Clock from "../components/attendance/Clock";
 import ReminderBanner from "../components/attendance/ReminderBanner";
 import ActionStep from "../components/attendance/ActionStep";
 import EmployeeStep from "../components/attendance/EmployeeStep";
+import FaceCapture from "../components/attendance/FaceCapture";
 import PinStep from "../components/attendance/PinStep";
 import ResultStep from "../components/attendance/ResultStep";
 import StepProgress from "../components/attendance/StepProgress";
@@ -32,9 +33,11 @@ export default function AttendancePage() {
     result,
     employees,
     devicePaired,
+    faceError,
     logAttendanceMutation,
     handleActionSelect,
     handleEmployeeSelect,
+    handleFaceCaptured,
     handlePinDigit,
     handlePinClear,
     handlePinBackspace,
@@ -146,6 +149,15 @@ export default function AttendancePage() {
           />
         )}
 
+        {step === "face" && (
+          <FaceCapture
+            employeeName={employees?.find((e) => e.id === selectedEmployeeId)?.name}
+            error={faceError}
+            onCaptured={handleFaceCaptured}
+            onBack={() => setStep("employee")}
+          />
+        )}
+
         {step === "pin" && (
           <PinStep
             employeeName={employees?.find((e) => e.id === selectedEmployeeId)?.name}
@@ -153,7 +165,8 @@ export default function AttendancePage() {
             pinError={pinError}
             isSubmitting={logAttendanceMutation.isPending}
             onBack={() => {
-              setStep("employee");
+              const employee = employees?.find((e) => e.id === selectedEmployeeId);
+              setStep(employee?.faceEnrolled ? "face" : "employee");
               handlePinClear();
             }}
             onDigit={handlePinDigit}

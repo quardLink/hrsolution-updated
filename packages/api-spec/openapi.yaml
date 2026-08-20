@@ -148,6 +148,8 @@ components:
           type: string
         reportingAfternoon:
           type: string
+        faceEnrolled:
+          type: boolean
       required:
         - id
         - name
@@ -222,6 +224,11 @@ components:
         session:
           type: string
           enum: [morning, afternoon_out, afternoon_in, evening]
+        faceDescriptor:
+          description: 128-d face-api.js recognition descriptor captured at the kiosk, when the employee has an enrolled face on file.
+          type: array
+          items:
+            type: number
       required:
         - employeeId
         - pin

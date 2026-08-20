@@ -3,7 +3,8 @@ import type { Step } from "../../hooks/useAttendanceWizard";
 const STEPS: { id: Step; label: string }[] = [
   { id: "action", label: "Select" },
   { id: "employee", label: "Identify" },
-  { id: "pin", label: "Verify" },
+  { id: "face", label: "Face" },
+  { id: "pin", label: "PIN" },
   { id: "result", label: "Done" },
 ];
 

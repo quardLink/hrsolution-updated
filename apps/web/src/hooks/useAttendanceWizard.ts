@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useListEmployees, useLogAttendance } from "@workspace/api-client";
 import { isDeviceNotPaired } from "../lib/deviceAuth";
 
-export type Step = "splash" | "action" | "employee" | "pin" | "result";
+export type Step = "splash" | "action" | "employee" | "face" | "pin" | "result";
 export type Action = "checkin" | "checkout";
 
 // Simplified: only two sessions — morning check-in and evening check-out
@@ -45,6 +45,8 @@ export function useAttendanceWizard() {
   const [pin, setPin] = useState<string>("");
   const [pinError, setPinError] = useState<string>("");
   const [result, setResult] = useState<AttendanceResult | null>(null);
+  const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
+  const [faceError, setFaceError] = useState<string>("");
 
   const { data: employees, error: employeesError } = useListEmployees();
   const logAttendanceMutation = useLogAttendance();
@@ -83,6 +85,15 @@ export function useAttendanceWizard() {
     setSelectedEmployeeId(id);
     setPin("");
     setPinError("");
+    setFaceDescriptor(null);
+    setFaceError("");
+    const employee = employees?.find((e) => e.id === id);
+    setStep(employee?.faceEnrolled ? "face" : "pin");
+  }
+
+  function handleFaceCaptured(descriptor: number[]) {
+    setFaceDescriptor(descriptor);
+    setFaceError("");
     setStep("pin");
   }
 
@@ -116,6 +127,7 @@ export function useAttendanceWizard() {
           pin: finalPin,
           action,
           session: currentSession,
+          ...(faceDescriptor ? { faceDescriptor } : {}),
         },
       });
       setResult({
@@ -131,8 +143,18 @@ export function useAttendanceWizard() {
         const data = (err as { data?: { error?: string } }).data;
         if (data?.error) msg = data.error;
       }
-      setPinError(msg);
       setPin("");
+      // A face problem needs a fresh capture, not another PIN attempt —
+      // send them back to re-scan instead of leaving the error stranded
+      // on a screen that can't fix it.
+      if (msg.toLowerCase().includes("face")) {
+        setFaceDescriptor(null);
+        setFaceError(msg);
+        setStep("face");
+        setPinError("");
+      } else {
+        setPinError(msg);
+      }
     }
   }
 
@@ -142,6 +164,7 @@ export function useAttendanceWizard() {
     setSelectedEmployeeId("");
     setPin("");
     setPinError("");
+    setFaceDescriptor(null);
     setResult(null);
   }
 
@@ -157,9 +180,11 @@ export function useAttendanceWizard() {
     result,
     employees,
     devicePaired,
+    faceError,
     logAttendanceMutation,
     handleActionSelect,
     handleEmployeeSelect,
+    handleFaceCaptured,
     handlePinDigit,
     handlePinClear,
     handlePinBackspace,

@@ -24,6 +24,7 @@ export const ListEmployeesResponseItem = zod.object({
   role: zod.string().optional(),
   reportingMorning: zod.string().optional(),
   reportingAfternoon: zod.string().optional(),
+  faceEnrolled: zod.boolean().optional(),
 });
 export const ListEmployeesResponse = zod.array(ListEmployeesResponseItem);
 
@@ -64,6 +65,7 @@ export const GetAdminLogsResponse = zod.object({
       role: zod.string().optional(),
       reportingMorning: zod.string().optional(),
       reportingAfternoon: zod.string().optional(),
+      faceEnrolled: zod.boolean().optional(),
     }),
   ),
 });
@@ -76,6 +78,12 @@ export const LogAttendanceBody = zod.object({
   pin: zod.string(),
   action: zod.enum(["checkin", "checkout"]),
   session: zod.enum(["morning", "afternoon_out", "afternoon_in", "evening"]),
+  faceDescriptor: zod
+    .array(zod.number())
+    .optional()
+    .describe(
+      "128-d face-api.js recognition descriptor captured at the kiosk, when the employee has an enrolled face on file.",
+    ),
 });
 
 export const LogAttendanceResponse = zod.object({

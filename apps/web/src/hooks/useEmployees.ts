@@ -13,6 +13,7 @@ export interface Employee {
   afternoonStart: string;
   afternoonEnd: string;
   monthlySalary: number;
+  faceEnrolled: boolean;
 }
 
 export interface EmployeeRole {
@@ -22,7 +23,13 @@ export interface EmployeeRole {
 
 // pin is write-only: required when creating, optional when editing (blank
 // = keep the existing PIN) — the server never sends real PINs back.
-export type EmployeeFormValues = Omit<Employee, "id"> & { id: string; pin: string };
+// faceDescriptor is also write-only and tri-state: undefined = leave
+// enrollment unchanged, an array = enroll/replace, null = remove it.
+export type EmployeeFormValues = Omit<Employee, "id" | "faceEnrolled"> & {
+  id: string;
+  pin: string;
+  faceDescriptor?: number[] | null;
+};
 
 export function useEmployees() {
   const { baseUrl, onError } = useAdminApi();

@@ -16,7 +16,12 @@ export interface Employee {
   afternoonStart: string;
   afternoonEnd: string;
   monthlySalary: number;
+  faceEnrolled: boolean;
 }
+
+// Only used internally by the attendance/log route to compare against a
+// captured descriptor — never serialized back to a client.
+export type VerifiedEmployee = Employee & { faceDescriptor: number[] | null };
 
 export interface PublicEmployee {
   id: string;
@@ -24,6 +29,7 @@ export interface PublicEmployee {
   role: string;
   reportingMorning: string;
   reportingAfternoon: string;
+  faceEnrolled: boolean;
 }
 
 function toEmployee(row: typeof schema.employees.$inferSelect): Employee {
@@ -38,6 +44,7 @@ function toEmployee(row: typeof schema.employees.$inferSelect): Employee {
     afternoonStart: row.afternoonStart,
     afternoonEnd: row.afternoonEnd,
     monthlySalary: Number(row.monthlySalary),
+    faceEnrolled: row.faceDescriptor != null,
   };
 }
 
@@ -92,6 +99,7 @@ export async function getPublicEmployees(
         role: e.role,
         reportingMorning: sched.morningStart,
         reportingAfternoon: sched.afternoonStart,
+        faceEnrolled: e.faceEnrolled,
       };
     });
 }
@@ -104,14 +112,14 @@ export async function verifyEmployee(
   orgId: string,
   employeeId: string,
   pin: string,
-): Promise<Employee | null> {
+): Promise<VerifiedEmployee | null> {
   const db = getDb();
   const row = await db.query.employees.findFirst({
     where: and(eq(schema.employees.orgId, orgId), eq(schema.employees.code, employeeId)),
   });
   if (!row || !row.active) return null;
   if (!verifySecret(pin, row.pinHash)) return null;
-  return toEmployee(row);
+  return { ...toEmployee(row), faceDescriptor: row.faceDescriptor ?? null };
 }
 
 // ============================================================
@@ -120,7 +128,7 @@ export async function verifyEmployee(
 
 export async function addEmployee(
   orgId: string,
-  emp: Omit<Employee, "id"> & { id?: string; pin: string },
+  emp: Omit<Employee, "id" | "faceEnrolled"> & { id?: string; pin: string; faceDescriptor?: number[] | null },
 ): Promise<Employee> {
   const db = getDb();
   const all = await db.query.employees.findMany({ where: eq(schema.employees.orgId, orgId) });
@@ -152,6 +160,7 @@ export async function addEmployee(
       afternoonStart: emp.afternoonStart,
       afternoonEnd: emp.afternoonEnd,
       monthlySalary: String(emp.monthlySalary ?? 0),
+      faceDescriptor: emp.faceDescriptor ?? null,
     })
     .returning();
 
@@ -161,7 +170,7 @@ export async function addEmployee(
 export async function updateEmployee(
   orgId: string,
   id: string,
-  updates: Partial<Omit<Employee, "id">> & { pin?: string },
+  updates: Partial<Omit<Employee, "id" | "faceEnrolled">> & { pin?: string; faceDescriptor?: number[] | null },
 ): Promise<Employee> {
   const db = getDb();
   const { pin, monthlySalary, ...rest } = updates;

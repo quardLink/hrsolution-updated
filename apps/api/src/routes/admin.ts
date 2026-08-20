@@ -10,6 +10,7 @@ import {
   type EmployeeRole,
 } from "../lib/employees";
 import { getOfficeSettings, updateOfficeSettings } from "../lib/settings";
+import { isValidDescriptor } from "../lib/faceMatch";
 import {
   getAllLeaveRequests,
   addLeaveRequest,
@@ -78,6 +79,18 @@ router.get("/admin/employees", async (req, res): Promise<void> => {
   }
 });
 
+// body.faceDescriptor: a 128-d array captured client-side by face-api.js
+// (enroll), or `null` to clear an existing enrollment. Anything else is
+// rejected rather than silently ignored, since a malformed descriptor
+// would otherwise sit in the DB and reject every future face match.
+function parseFaceDescriptor(body: Record<string, unknown>): number[] | null | undefined {
+  if (!("faceDescriptor" in body)) return undefined;
+  const value = body.faceDescriptor;
+  if (value === null) return null;
+  if (!isValidDescriptor(value)) throw new Error("Invalid face descriptor");
+  return value;
+}
+
 router.post("/admin/employees", async (req, res): Promise<void> => {
   try {
     const body = req.body ?? {};
@@ -97,6 +110,7 @@ router.post("/admin/employees", async (req, res): Promise<void> => {
       afternoonStart: body.afternoonStart ?? "16:00",
       afternoonEnd: body.afternoonEnd ?? "19:00",
       monthlySalary: Number(body.monthlySalary) || 0,
+      faceDescriptor: parseFaceDescriptor(body) ?? null,
     });
     res.json({ employee: created });
   } catch (err) {
@@ -108,7 +122,7 @@ router.post("/admin/employees", async (req, res): Promise<void> => {
 router.patch("/admin/employees/:id", async (req, res): Promise<void> => {
   try {
     const body = req.body ?? {};
-    const updates: Partial<Omit<Employee, "id">> & { pin?: string } = {};
+    const updates: Partial<Omit<Employee, "id" | "faceEnrolled">> & { pin?: string; faceDescriptor?: number[] | null } = {};
     if (body.name !== undefined) updates.name = String(body.name).trim();
     if (body.pin) updates.pin = String(body.pin).trim();
     if (body.role !== undefined) updates.role = body.role as EmployeeRole;
@@ -119,6 +133,8 @@ router.patch("/admin/employees/:id", async (req, res): Promise<void> => {
     if (body.afternoonStart !== undefined) updates.afternoonStart = String(body.afternoonStart);
     if (body.afternoonEnd !== undefined) updates.afternoonEnd = String(body.afternoonEnd);
     if (body.monthlySalary !== undefined) updates.monthlySalary = Number(body.monthlySalary) || 0;
+    const faceDescriptor = parseFaceDescriptor(body);
+    if (faceDescriptor !== undefined) updates.faceDescriptor = faceDescriptor;
 
     const updated = await updateEmployee(req.orgId!, String(req.params.id), updates);
     res.json({ employee: updated });

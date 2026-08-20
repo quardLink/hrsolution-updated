@@ -12,4 +12,5 @@ export interface Employee {
   role?: string;
   reportingMorning?: string;
   reportingAfternoon?: string;
+  faceEnrolled?: boolean;
 }

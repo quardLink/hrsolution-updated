@@ -1,5 +1,6 @@
 import { useState } from "react";
 import BottomSheetModal from "../shared/BottomSheetModal";
+import FaceEnroll from "./FaceEnroll";
 import { parseDecimalInput } from "../../../lib/utils";
 import type { Employee, EmployeeFormValues, EmployeeRole } from "../../../hooks/useEmployees";
 
@@ -130,6 +131,13 @@ export default function EmployeeFormModal({ editing, roles, onClose, onSave }: P
               Manage the role list in Settings → Roles.
             </p>
           </div>
+
+          <FaceEnroll
+            currentlyEnrolled={editing?.faceEnrolled ?? false}
+            pending={form.faceDescriptor}
+            onCapture={(descriptor) => setForm({ ...form, faceDescriptor: descriptor })}
+            onClear={() => setForm({ ...form, faceDescriptor: null })}
+          />
 
           <div className="border-t border-border pt-4">
             <label className="flex items-center gap-2 mb-3">

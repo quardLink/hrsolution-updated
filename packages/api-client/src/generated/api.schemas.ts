@@ -15,6 +15,7 @@ export interface Employee {
   role?: string;
   reportingMorning?: string;
   reportingAfternoon?: string;
+  faceEnrolled?: boolean;
 }
 
 export interface AttendanceLogEntry {
@@ -63,6 +64,8 @@ export interface LogAttendanceBody {
   pin: string;
   action: LogAttendanceBodyAction;
   session: LogAttendanceBodySession;
+  /** 128-d face-api.js recognition descriptor captured at the kiosk, when the employee has an enrolled face on file. */
+  faceDescriptor?: number[];
 }
 
 export type LogAttendanceResponseStatus =

@@ -4,6 +4,7 @@ import { getOfficeSettings } from "../lib/settings";
 import { appendAttendanceRow } from "../lib/attendanceLogs";
 import { getOrgById } from "../lib/orgs";
 import { requireDeviceToken } from "../lib/devices";
+import { isValidDescriptor, isFaceMatch } from "../lib/faceMatch";
 import { LogAttendanceBody } from "@workspace/api-schema";
 
 const router: IRouter = Router();
@@ -52,13 +53,28 @@ router.post("/attendance/log", requireDeviceToken, async (req, res): Promise<voi
     return;
   }
 
-  const { employeeId, pin, action, session } = parsed.data;
+  const { employeeId, pin, action, session, faceDescriptor } = parsed.data;
   const orgId = req.orgId!;
 
   const employee = await verifyEmployee(orgId, employeeId, pin);
   if (!employee) {
     res.status(400).json({ error: "Invalid employee or PIN. Please try again." });
     return;
+  }
+
+  // An employee with a face on file must also match it at check-in — this
+  // is what stops a coworker who knows their PIN from punching for them.
+  // Employees who haven't been enrolled yet stay PIN-only (no forced
+  // rollout), so this only tightens once an admin opts an employee in.
+  if (employee.faceDescriptor) {
+    if (!faceDescriptor || !isValidDescriptor(faceDescriptor)) {
+      res.status(400).json({ error: "Face verification required. Please look at the camera and try again." });
+      return;
+    }
+    if (!isFaceMatch(employee.faceDescriptor, faceDescriptor)) {
+      res.status(400).json({ error: "Face didn't match. Please try again or ask your admin for help." });
+      return;
+    }
   }
 
   const TIMEZONE = "Asia/Riyadh";

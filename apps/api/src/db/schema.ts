@@ -1,5 +1,6 @@
 import {
   boolean,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -46,6 +47,12 @@ export const employees = pgTable(
     afternoonStart: text("afternoon_start").notNull().default("16:00"),
     afternoonEnd: text("afternoon_end").notNull().default("19:00"),
     monthlySalary: numeric("monthly_salary", { precision: 12, scale: 2 }).notNull().default("0"),
+    // 128-d face-api.js recognition descriptor, captured once by an admin
+    // pointing a camera at the employee. Never a photo — just the numeric
+    // embedding, which can't be turned back into an image. Null means this
+    // employee hasn't been enrolled yet and attendance stays PIN-only for
+    // them (no forced rollout / no break for existing employees).
+    faceDescriptor: jsonb("face_descriptor").$type<number[] | null>(),
   },
   (t) => [primaryKey({ columns: [t.orgId, t.code] })],
 );
