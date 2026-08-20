@@ -14,7 +14,12 @@ function eyeAspectRatio(eye: Point[]): number {
   return horizontal === 0 ? 0 : vertical / (2 * horizontal);
 }
 
-const EAR_BLINK_THRESHOLD = 0.22;
+// A fixed absolute EAR cutoff doesn't hold up across cameras, distances,
+// and lighting — what counts as "eyes open" varies too much per person and
+// per tablet. Instead this tracks the highest EAR seen (the person's own
+// "eyes open" baseline for this session) and flags a blink as a relative
+// drop below it, which adapts automatically instead of needing tuning.
+const BLINK_DROP_RATIO = 0.75;
 
 // A blink defeats a static photo or a paused video frame held up to the
 // camera — it can't blink on cue the way a real person glances and
@@ -22,7 +27,8 @@ const EAR_BLINK_THRESHOLD = 0.22;
 // pre-recorded video of the enrolled person, but that's a much higher bar
 // than the realistic "hold up a phone photo" attack this is aimed at.
 export function createBlinkDetector() {
-  let framesBelowThreshold = 0;
+  let openBaseline = 0;
+  let dipped = false;
   let blinkDetected = false;
 
   return {
@@ -30,16 +36,17 @@ export function createBlinkDetector() {
     // (close then reopen) has been observed since the last reset().
     update(leftEye: Point[], rightEye: Point[]): boolean {
       const ear = (eyeAspectRatio(leftEye) + eyeAspectRatio(rightEye)) / 2;
-      if (ear < EAR_BLINK_THRESHOLD) {
-        framesBelowThreshold++;
-      } else {
-        if (framesBelowThreshold >= 1) blinkDetected = true;
-        framesBelowThreshold = 0;
+      if (ear > openBaseline) openBaseline = ear;
+      if (openBaseline > 0 && ear < openBaseline * BLINK_DROP_RATIO) {
+        dipped = true;
+      } else if (dipped) {
+        blinkDetected = true;
       }
       return blinkDetected;
     },
     reset(): void {
-      framesBelowThreshold = 0;
+      openBaseline = 0;
+      dipped = false;
       blinkDetected = false;
     },
   };

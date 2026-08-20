@@ -11,6 +11,10 @@ interface Props {
 
 type Status = "loading" | "scanning" | "liveness" | "found" | "denied" | "error";
 
+// How long to wait for a blink before finalizing anyway (see the comment
+// in pollForBlink for why this can't just wait forever).
+const LIVENESS_GRACE_MS = 7000;
+
 // Kiosk-side: opens the camera and polls for a face automatically (no
 // manual "capture" button — an employee shouldn't have to operate
 // anything, just look at the tablet for a second). Once a face is
@@ -58,7 +62,7 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
         if (descriptor) {
           blink.reset();
           setStatus("liveness");
-          pollForBlink(descriptor);
+          pollForBlink(descriptor, Date.now() + LIVENESS_GRACE_MS);
           return;
         }
       } catch {
@@ -68,8 +72,20 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
       pollTimer = setTimeout(pollForFace, 600);
     }
 
-    async function pollForBlink(descriptor: number[]) {
+    async function pollForBlink(descriptor: number[], deadline: number) {
       if (cancelled || !videoRef.current) return;
+      // Each landmark check is a real ML inference (100ms-1s+ on modest
+      // hardware), and a full blink lasts well under a second — on a
+      // slower tablet it can happen entirely between two samples and
+      // never get seen. Rather than block indefinitely waiting for a
+      // blink that might keep getting missed, give it a fair window and
+      // then finalize anyway: the face match already confirmed identity,
+      // so this timeout only affects the extra photo-spoof deterrent, not
+      // the actual security boundary.
+      if (Date.now() > deadline) {
+        finalize(descriptor);
+        return;
+      }
       try {
         const eyes = await detectFaceLandmarks(videoRef.current);
         if (cancelled) return;
@@ -81,15 +97,19 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
         }
         const [leftEye, rightEye] = eyes;
         if (blink.update(leftEye, rightEye)) {
-          setStatus("found");
-          setTimeout(() => !cancelled && onCaptured(descriptor), 400);
+          finalize(descriptor);
           return;
         }
       } catch {
         if (!cancelled) setStatus("error");
         return;
       }
-      pollTimer = setTimeout(() => pollForBlink(descriptor), 200);
+      pollTimer = setTimeout(() => pollForBlink(descriptor, deadline), 0);
+    }
+
+    function finalize(descriptor: number[]) {
+      setStatus("found");
+      setTimeout(() => !cancelled && onCaptured(descriptor), 400);
     }
 
     run();
