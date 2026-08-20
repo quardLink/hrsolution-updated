@@ -14,8 +14,11 @@ interface Props {
 type Status = "loading" | "scanning" | "liveness" | "found" | "denied" | "error";
 
 // How long to wait for a blink before finalizing anyway (see the comment
-// in pollForBlink for why this can't just wait forever).
-const LIVENESS_GRACE_MS = 7000;
+// in pollForBlink for why this can't just wait forever). Kept short so a
+// non-blink doesn't stall the kiosk — most real check-ins either catch a
+// blink well before this or just ride out the timeout, so this constant is
+// effectively the ceiling on how long the whole face step takes.
+const LIVENESS_GRACE_MS = 3000;
 
 // Kiosk-side: opens the camera and polls for a face automatically (no
 // manual "capture" button — an employee shouldn't have to operate
