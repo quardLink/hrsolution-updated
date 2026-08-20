@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Smartphone } from "lucide-react";
 import { useLocale } from "@/contexts/LocaleContext";
+import PoweredBy from "@/components/PoweredBy";
 import PinPad from "./PinPad";
 import { setDeviceToken } from "../../lib/deviceAuth";
 
@@ -93,6 +94,7 @@ export default function KioskPairingScreen({ baseUrl, onPaired }: Props) {
           )}
         </div>
       </div>
+      <PoweredBy />
     </div>
   );
 }

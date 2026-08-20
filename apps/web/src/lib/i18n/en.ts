@@ -37,6 +37,7 @@ const en = {
     refresh: "Refresh data",
     testSound: "Test sound",
     language: "Language",
+    poweredBy: "Powered by",
   },
   today: {
     title: "Today's Attendance",

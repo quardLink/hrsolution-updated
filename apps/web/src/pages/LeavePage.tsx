@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, Palmtree, Languages } from "lucide-react";
 import { useLocale } from "@/contexts/LocaleContext";
+import PoweredBy from "@/components/PoweredBy";
 import LeaveRequestForm from "../components/leave/LeaveRequestForm";
 import LeaveRequestSuccess, { type LeaveRequestSuccessData } from "../components/leave/LeaveRequestSuccess";
 
@@ -87,6 +88,7 @@ export default function LeavePage() {
           )}
         </div>
       </div>
+      <PoweredBy />
     </div>
   );
 }

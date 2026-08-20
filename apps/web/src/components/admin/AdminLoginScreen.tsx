@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import PoweredBy from "@/components/PoweredBy";
 
 interface Props {
   authError: string;
@@ -73,6 +74,7 @@ export default function AdminLoginScreen({ authError, loading, onSubmit }: Props
           </form>
         </CardContent>
       </Card>
+      <PoweredBy />
     </div>
   );
 }

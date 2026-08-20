@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocale } from "@/contexts/LocaleContext";
+import PoweredBy from "@/components/PoweredBy";
 
 type Step = "account" | "firm" | "hours";
 const STEPS: Step[] = ["account", "firm", "hours"];
@@ -261,6 +262,7 @@ export default function SignupPage() {
           </CardContent>
         </Card>
       </div>
+      <PoweredBy />
     </div>
   );
 }

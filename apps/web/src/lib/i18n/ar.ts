@@ -42,6 +42,7 @@ const ar: typeof en = {
     refresh: "تحديث البيانات",
     testSound: "تجربة الصوت",
     language: "اللغة",
+    poweredBy: "بدعم من",
   },
   today: {
     title: "حضور اليوم",

@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Lock, Building2, Check, Languages } from "lucide-react";
 import { useLocale } from "@/contexts/LocaleContext";
+import PoweredBy from "@/components/PoweredBy";
 import Clock from "../components/attendance/Clock";
 import ReminderBanner from "../components/attendance/ReminderBanner";
 import ActionStep from "../components/attendance/ActionStep";
@@ -114,6 +115,7 @@ export default function AttendancePage() {
           @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
           @keyframes pulse { 0%,100% { opacity:.3; transform:scale(.8); } 50% { opacity:1; transform:scale(1.1); } }
         `}</style>
+        <PoweredBy />
       </div>
     );
   }
@@ -121,6 +123,7 @@ export default function AttendancePage() {
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
       <KioskGlow />
+      <PoweredBy />
       {reminder && <ReminderBanner reminder={reminder} onDismiss={dismiss} />}
 
       <header className="px-6 lg:px-10 pt-5 pb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 relative">

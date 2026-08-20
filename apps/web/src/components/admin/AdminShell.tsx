@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/contexts/LocaleContext";
+import PoweredBy from "@/components/PoweredBy";
 
 export type AdminView =
   | "today"
@@ -193,6 +194,7 @@ export default function AdminShell({
         <main className="flex-1 w-full px-4 lg:px-8 py-6 lg:py-8 space-y-5 lg:space-y-6 max-w-7xl mx-auto">
           {children}
         </main>
+        <PoweredBy />
       </SidebarInset>
     </SidebarProvider>
   );
