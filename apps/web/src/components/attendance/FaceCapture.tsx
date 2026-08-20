@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { detectFaceDescriptor, openCamera, stopCamera } from "../../lib/faceApi";
+import { detectFaceDescriptor, detectFaceLandmarks, loadFaceModels, openCamera, stopCamera } from "../../lib/faceApi";
+import { createBlinkDetector } from "../../lib/liveness";
 
 interface Props {
   employeeName: string | undefined;
@@ -8,41 +9,78 @@ interface Props {
   onBack: () => void;
 }
 
+type Status = "loading" | "scanning" | "liveness" | "found" | "denied" | "error";
+
 // Kiosk-side: opens the camera and polls for a face automatically (no
 // manual "capture" button — an employee shouldn't have to operate
-// anything, just look at the tablet for a second). The descriptor never
-// leaves this component as anything but numbers; no photo is stored or
-// sent anywhere.
+// anything, just look at the tablet for a second). Once a face is
+// matched, it also waits for a natural blink before finalizing — that
+// stops a coworker from just holding up a photo of the enrolled employee
+// to the camera. The descriptor never leaves this component as anything
+// but numbers; no photo is stored or sent anywhere.
 export default function FaceCapture({ employeeName, error, onCaptured, onBack }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState<"loading" | "scanning" | "found" | "denied" | "error">("loading");
+  const [status, setStatus] = useState<Status>("loading");
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     let stream: MediaStream | null = null;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    const blink = createBlinkDetector();
 
     async function run() {
       try {
+        // Kick the ~7MB model download off in parallel with the camera
+        // permission prompt instead of waiting until the first detection
+        // call — that's what used to make the first capture look frozen.
+        const modelsReady = loadFaceModels();
         stream = await openCamera();
         if (cancelled) return;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
+        await modelsReady;
+        if (cancelled) return;
         setStatus("scanning");
-        poll();
+        pollForFace();
       } catch {
         if (!cancelled) setStatus("denied");
       }
     }
 
-    async function poll() {
+    async function pollForFace() {
       if (cancelled || !videoRef.current) return;
       try {
         const descriptor = await detectFaceDescriptor(videoRef.current);
         if (cancelled) return;
         if (descriptor) {
+          blink.reset();
+          setStatus("liveness");
+          pollForBlink(descriptor);
+          return;
+        }
+      } catch {
+        if (!cancelled) setStatus("error");
+        return;
+      }
+      pollTimer = setTimeout(pollForFace, 600);
+    }
+
+    async function pollForBlink(descriptor: number[]) {
+      if (cancelled || !videoRef.current) return;
+      try {
+        const eyes = await detectFaceLandmarks(videoRef.current);
+        if (cancelled) return;
+        if (!eyes) {
+          // lost the face mid-check (they looked away) — reacquire it
+          setStatus("scanning");
+          pollForFace();
+          return;
+        }
+        const [leftEye, rightEye] = eyes;
+        if (blink.update(leftEye, rightEye)) {
           setStatus("found");
           setTimeout(() => !cancelled && onCaptured(descriptor), 400);
           return;
@@ -51,7 +89,7 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
         if (!cancelled) setStatus("error");
         return;
       }
-      pollTimer = setTimeout(poll, 600);
+      pollTimer = setTimeout(() => pollForBlink(descriptor), 200);
     }
 
     run();
@@ -61,7 +99,7 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
       stopCamera(stream);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retryKey]);
 
   return (
     <div className="w-full max-w-sm space-y-5">
@@ -101,16 +139,24 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
         <div className="text-center text-sm font-medium">
           {status === "loading" && <span className="text-muted-foreground">Starting camera...</span>}
           {status === "scanning" && <span className="text-primary animate-pulse">Scanning for your face...</span>}
+          {status === "liveness" && <span className="text-primary animate-pulse">Blink to confirm it's you...</span>}
           {status === "found" && <span className="text-primary">Face verified</span>}
           {status === "denied" && (
             <span className="text-red-400">
               Camera access is blocked. Enable it in the browser settings for this kiosk, or ask your admin.
             </span>
           )}
-          {status === "error" && (
-            <span className="text-red-400">Face check failed to start. Try again in a moment.</span>
-          )}
+          {status === "error" && <span className="text-red-400">Face check hit a snag.</span>}
         </div>
+
+        {status === "error" && (
+          <button
+            onClick={() => setRetryKey((k) => k + 1)}
+            className="w-full py-2 text-sm font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-xl"
+          >
+            Try Again
+          </button>
+        )}
       </div>
     </div>
   );

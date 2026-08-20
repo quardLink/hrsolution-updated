@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { detectFaceDescriptor, openCamera, stopCamera } from "../../../lib/faceApi";
+import { detectFaceDescriptor, loadFaceModels, openCamera, stopCamera } from "../../../lib/faceApi";
 
 interface Props {
   // true if the employee already has a face on file (from the last save),
@@ -16,9 +16,11 @@ interface Props {
 // like the kiosk) so whoever's enrolling can make sure the employee is
 // framed and ready before the reference descriptor is taken — this is the
 // "ground truth" every future check-in gets compared against.
+type Status = "loading" | "ready" | "analyzing" | "denied" | "not_found" | "error";
+
 export default function FaceEnroll({ currentlyEnrolled, pending, onCapture, onClear }: Props) {
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<"loading" | "ready" | "denied" | "not_found" | "captured">("loading");
+  const [status, setStatus] = useState<Status>("loading");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -29,6 +31,10 @@ export default function FaceEnroll({ currentlyEnrolled, pending, onCapture, onCl
 
     (async () => {
       try {
+        // Start the model download alongside the camera permission prompt
+        // rather than waiting until "Capture" is clicked — that gap is
+        // what used to make the button look stuck for several seconds.
+        const modelsReady = loadFaceModels();
         const stream = await openCamera();
         if (cancelled) {
           stopCamera(stream);
@@ -39,6 +45,8 @@ export default function FaceEnroll({ currentlyEnrolled, pending, onCapture, onCl
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
+        await modelsReady;
+        if (cancelled) return;
         setStatus("ready");
       } catch {
         if (!cancelled) setStatus("denied");
@@ -54,16 +62,20 @@ export default function FaceEnroll({ currentlyEnrolled, pending, onCapture, onCl
 
   async function capture() {
     if (!videoRef.current) return;
-    setStatus("loading");
-    const descriptor = await detectFaceDescriptor(videoRef.current);
-    if (!descriptor) {
-      setStatus("not_found");
-      return;
+    setStatus("analyzing");
+    try {
+      const descriptor = await detectFaceDescriptor(videoRef.current);
+      if (!descriptor) {
+        setStatus("not_found");
+        return;
+      }
+      onCapture(descriptor);
+      stopCamera(streamRef.current);
+      streamRef.current = null;
+      setOpen(false);
+    } catch {
+      setStatus("error");
     }
-    onCapture(descriptor);
-    stopCamera(streamRef.current);
-    streamRef.current = null;
-    setOpen(false);
   }
 
   const willBeEnrolled = pending === undefined ? currentlyEnrolled : pending !== null;
@@ -110,17 +122,19 @@ export default function FaceEnroll({ currentlyEnrolled, pending, onCapture, onCl
           <div className="text-center text-xs font-medium min-h-4">
             {status === "loading" && <span className="text-muted-foreground">Starting camera...</span>}
             {status === "ready" && <span className="text-muted-foreground">Center the employee's face, then capture</span>}
+            {status === "analyzing" && <span className="text-primary animate-pulse">Analyzing...</span>}
             {status === "not_found" && <span className="text-red-400">No face detected — try again</span>}
             {status === "denied" && <span className="text-red-400">Camera access denied</span>}
+            {status === "error" && <span className="text-red-400">Face check hit a snag — try again</span>}
           </div>
           <div className="flex justify-center gap-2">
             <button
               type="button"
               onClick={capture}
-              disabled={status !== "ready" && status !== "not_found"}
+              disabled={status !== "ready" && status !== "not_found" && status !== "error"}
               className="px-4 py-1.5 text-xs font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-lg disabled:opacity-50"
             >
-              Capture
+              {status === "analyzing" ? "Analyzing..." : "Capture"}
             </button>
             <button
               type="button"
