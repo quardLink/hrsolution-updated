@@ -5,6 +5,7 @@
   "outputDirectory": "apps/web/dist/public",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/iclock/(.*)", "destination": "/api" },
+    { "source": "/((?!api/|iclock/).*)", "destination": "/index.html" }
   ]
 }

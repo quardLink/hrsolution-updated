@@ -9,6 +9,7 @@ import SettingsRolesPanel from "./settings/SettingsRolesPanel";
 import ChangePasswordCard from "./settings/ChangePasswordCard";
 import PublicLeaveLinkCard from "./settings/PublicLeaveLinkCard";
 import DevicesPanel from "./settings/DevicesPanel";
+import BiometricDevicesPanel from "./settings/BiometricDevicesPanel";
 
 type Section = "general" | "hours" | "roles" | "devices" | "security";
 
@@ -84,7 +85,12 @@ export default function SettingsTab() {
             <SettingsRolesPanel roles={roles} onAdd={addRole} onSaveEdit={saveRoleEdit} onRemove={removeRole} />
           )}
 
-          {section === "devices" && <DevicesPanel />}
+          {section === "devices" && (
+            <div className="space-y-6">
+              <DevicesPanel />
+              <BiometricDevicesPanel />
+            </div>
+          )}
 
           {section === "security" && (
             <div className="space-y-4 max-w-2xl">

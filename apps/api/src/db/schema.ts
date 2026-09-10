@@ -53,6 +53,11 @@ export const employees = pgTable(
     // employee hasn't been enrolled yet and attendance stays PIN-only for
     // them (no forced rollout / no break for existing employees).
     faceDescriptor: jsonb("face_descriptor").$type<number[] | null>(),
+    // The numeric ID this employee is enrolled under on a fingerprint
+    // terminal (ZKTeco keypads are numeric-only, so this is usually
+    // different from `code`, e.g. "EMP001"). Null means not enrolled on
+    // any terminal yet — punches fall back to matching `code` directly.
+    biometricPin: text("biometric_pin"),
   },
   (t) => [primaryKey({ columns: [t.orgId, t.code] })],
 );
@@ -113,6 +118,13 @@ export const attendanceLogs = pgTable("attendance_logs", {
   status: text("status").notNull(),
   message: text("message").notNull(),
   deviceId: uuid("device_id").references(() => devices.id),
+  biometricDeviceId: uuid("biometric_device_id").references(() => biometricDevices.id),
+  // The actual moment the event happened (kiosk tap or fingerprint punch),
+  // as opposed to `createdAt` (row insertion time). These match for kiosk
+  // rows, but diverge for a fingerprint terminal that was offline and
+  // bulk-pushes a backlog of punches later — same-day/ordering logic must
+  // use this column, not createdAt.
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -151,6 +163,23 @@ export const devices = pgTable("devices", {
   lastSeenIp: text("last_seen_ip"),
   pairedAt: timestamp("paired_at", { withTimezone: true }).notNull().defaultNow(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
+
+// A registered fingerprint/access-control terminal (e.g. a ZKTeco F22)
+// that pushes attendance over the ADMS protocol. Unlike `devices`, there's
+// no pairing handshake — an admin reads the serial number off the unit's
+// screen (Comm menu) and registers it here, then points the terminal's
+// "Cloud Server" setting at this app's URL. The serial is what the device
+// sends on every request, so it's what maps a push back to an org.
+export const biometricDevices = pgTable("biometric_devices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => orgs.id),
+  serialNumber: text("serial_number").notNull().unique(),
+  name: text("name").notNull().default("Fingerprint Terminal"),
+  lastSeenIp: text("last_seen_ip"),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
 });
 

@@ -17,6 +17,7 @@ export interface Employee {
   afternoonEnd: string;
   monthlySalary: number;
   faceEnrolled: boolean;
+  biometricPin: string | null;
 }
 
 // Only used internally by the attendance/log route to compare against a
@@ -45,6 +46,7 @@ function toEmployee(row: typeof schema.employees.$inferSelect): Employee {
     afternoonEnd: row.afternoonEnd,
     monthlySalary: Number(row.monthlySalary),
     faceEnrolled: row.faceDescriptor != null,
+    biometricPin: row.biometricPin ?? null,
   };
 }
 
@@ -128,7 +130,12 @@ export async function verifyEmployee(
 
 export async function addEmployee(
   orgId: string,
-  emp: Omit<Employee, "id" | "faceEnrolled"> & { id?: string; pin: string; faceDescriptor?: number[] | null },
+  emp: Omit<Employee, "id" | "faceEnrolled" | "biometricPin"> & {
+    id?: string;
+    pin: string;
+    faceDescriptor?: number[] | null;
+    biometricPin?: string | null;
+  },
 ): Promise<Employee> {
   const db = getDb();
   const all = await db.query.employees.findMany({ where: eq(schema.employees.orgId, orgId) });
@@ -161,6 +168,7 @@ export async function addEmployee(
       afternoonEnd: emp.afternoonEnd,
       monthlySalary: String(emp.monthlySalary ?? 0),
       faceDescriptor: emp.faceDescriptor ?? null,
+      biometricPin: emp.biometricPin ?? null,
     })
     .returning();
 
@@ -192,6 +200,29 @@ export async function updateEmployee(
 export async function deleteEmployee(orgId: string, id: string): Promise<void> {
   // Soft delete — set active=false to preserve attendance history integrity
   await updateEmployee(orgId, id, { active: false });
+}
+
+// ============================================================
+// Fingerprint terminal lookup
+// ============================================================
+
+// A terminal push only carries a numeric PIN, not the "EMP001"-style code
+// everything else uses — so match on the dedicated biometricPin first,
+// falling back to `code` directly (covers orgs that just enrolled the
+// terminal with the numeric tail of the code, or use plain numeric codes).
+export async function findEmployeeByPunchPin(orgId: string, pin: string): Promise<Employee | null> {
+  const db = getDb();
+  const byBiometricPin = await db.query.employees.findFirst({
+    where: and(eq(schema.employees.orgId, orgId), eq(schema.employees.biometricPin, pin)),
+  });
+  if (byBiometricPin && byBiometricPin.active) return toEmployee(byBiometricPin);
+
+  const byCode = await db.query.employees.findFirst({
+    where: and(eq(schema.employees.orgId, orgId), eq(schema.employees.code, pin)),
+  });
+  if (byCode && byCode.active) return toEmployee(byCode);
+
+  return null;
 }
 
 // ============================================================

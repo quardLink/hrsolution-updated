@@ -20,6 +20,7 @@ import { getAllRoles, addRole, updateRole, deleteRole } from "../lib/roles";
 import { calculateMonthlyPayroll } from "../lib/payroll";
 import { runDailyPayrollJob } from "../lib/payrollDailyJob";
 import { requireOrgSession } from "../lib/session";
+import { registerBiometricDevice, listBiometricDevices, revokeBiometricDevice } from "../lib/biometricDevices";
 
 const router: IRouter = Router();
 router.use(requireOrgSession);
@@ -111,6 +112,7 @@ router.post("/admin/employees", async (req, res): Promise<void> => {
       afternoonEnd: body.afternoonEnd ?? "19:00",
       monthlySalary: Number(body.monthlySalary) || 0,
       faceDescriptor: parseFaceDescriptor(body) ?? null,
+      biometricPin: body.biometricPin ? String(body.biometricPin).trim() : null,
     });
     res.json({ employee: created });
   } catch (err) {
@@ -133,6 +135,9 @@ router.patch("/admin/employees/:id", async (req, res): Promise<void> => {
     if (body.afternoonStart !== undefined) updates.afternoonStart = String(body.afternoonStart);
     if (body.afternoonEnd !== undefined) updates.afternoonEnd = String(body.afternoonEnd);
     if (body.monthlySalary !== undefined) updates.monthlySalary = Number(body.monthlySalary) || 0;
+    if (body.biometricPin !== undefined) {
+      updates.biometricPin = body.biometricPin ? String(body.biometricPin).trim() : null;
+    }
     const faceDescriptor = parseFaceDescriptor(body);
     if (faceDescriptor !== undefined) updates.faceDescriptor = faceDescriptor;
 
@@ -151,6 +156,45 @@ router.delete("/admin/employees/:id", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "Failed to delete employee");
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to delete employee" });
+  }
+});
+
+// ============================================================
+// Biometric (fingerprint terminal) devices
+// ============================================================
+
+router.get("/admin/biometric-devices", async (req, res): Promise<void> => {
+  try {
+    const devices = await listBiometricDevices(req.orgId!);
+    res.json({ devices });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch biometric devices");
+    res.status(500).json({ error: "Failed to fetch devices" });
+  }
+});
+
+router.post("/admin/biometric-devices", async (req, res): Promise<void> => {
+  const serialNumber = typeof req.body?.serialNumber === "string" ? req.body.serialNumber.trim() : "";
+  const name = typeof req.body?.name === "string" && req.body.name.trim() ? req.body.name.trim() : "Fingerprint Terminal";
+  if (!serialNumber) {
+    res.status(400).json({ error: "Serial number is required" });
+    return;
+  }
+  try {
+    const device = await registerBiometricDevice(req.orgId!, serialNumber, name);
+    res.json({ device });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Failed to register device" });
+  }
+});
+
+router.delete("/admin/biometric-devices/:id", async (req, res): Promise<void> => {
+  try {
+    await revokeBiometricDevice(req.orgId!, String(req.params.id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to revoke biometric device");
+    res.status(500).json({ error: "Failed to revoke device" });
   }
 });
 

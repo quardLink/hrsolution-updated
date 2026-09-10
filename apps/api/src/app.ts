@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import zktecoRouter from "./routes/zkteco";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -38,6 +39,13 @@ app.use(
 // this mainly guards against someone embedding the API cross-origin.
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
+
+// Fingerprint terminals (ZKTeco ADMS/PUSH protocol) call fixed /iclock/*
+// paths at the app root, not under /api, and send raw text bodies — this
+// has to run before the JSON/urlencoded parsers below so it can read the
+// body itself instead of getting an empty one.
+app.use(zktecoRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

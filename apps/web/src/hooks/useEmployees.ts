@@ -14,6 +14,7 @@ export interface Employee {
   afternoonEnd: string;
   monthlySalary: number;
   faceEnrolled: boolean;
+  biometricPin: string | null;
 }
 
 export interface EmployeeRole {

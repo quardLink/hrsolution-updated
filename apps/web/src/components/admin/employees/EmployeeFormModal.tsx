@@ -29,6 +29,7 @@ const EMPTY_FORM: EmployeeFormValues = {
   afternoonStart: "16:00",
   afternoonEnd: "19:00",
   monthlySalary: 0,
+  biometricPin: null,
 };
 
 export default function EmployeeFormModal({ editing, roles, onClose, onSave }: Props) {
@@ -125,6 +126,20 @@ export default function EmployeeFormModal({ editing, roles, onClose, onSave }: P
             onCapture={(descriptor) => setForm({ ...form, faceDescriptor: descriptor })}
             onClear={() => setForm({ ...form, faceDescriptor: null })}
           />
+
+          <div className="space-y-1.5">
+            <Label>{t("employees.biometricPin")} ({t("common.optional")})</Label>
+            <Input
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={9}
+              value={form.biometricPin ?? ""}
+              onChange={(e) => setForm({ ...form, biometricPin: e.target.value.replace(/\D/g, "") || null })}
+              placeholder={t("employees.biometricPinPlaceholder")}
+              className="font-mono tracking-widest"
+            />
+            <p className="text-xs text-muted-foreground">{t("employees.biometricPinHint")}</p>
+          </div>
 
           <div className="border-t pt-4">
             <label className="flex items-center gap-2.5 mb-3 cursor-pointer">
