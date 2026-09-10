@@ -43,8 +43,10 @@ app.use(cookieParser());
 // Fingerprint terminals (ZKTeco ADMS/PUSH protocol) call fixed /iclock/*
 // paths at the app root, not under /api, and send raw text bodies — this
 // has to run before the JSON/urlencoded parsers below so it can read the
-// body itself instead of getting an empty one.
-app.use(zktecoRouter);
+// body itself instead of getting an empty one. Scoped to the "/iclock"
+// prefix (not a blanket app.use) so its raw-text body parser can't also
+// swallow the body of unrelated requests like /api/auth/login.
+app.use("/iclock", zktecoRouter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

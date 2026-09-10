@@ -20,9 +20,13 @@ const router: IRouter = Router();
 // router as raw text regardless of header, before the app's global
 // express.json() would otherwise leave req.body empty.
 //
-// This router is mounted directly on the app (not under /api) in app.ts,
-// because the terminal's request paths (/iclock/cdata etc.) are hardcoded
-// in its firmware — only the host/port are configurable on the device.
+// This router is mounted at "/iclock" directly on the app (not under
+// /api) in app.ts, because the terminal's request paths (/iclock/cdata
+// etc.) are hardcoded in its firmware — only the host/port are
+// configurable on the device. It must stay scoped to that prefix: this
+// text-body middleware runs for every request that reaches the router,
+// and mounting it unscoped would consume the body of unrelated /api/*
+// requests (e.g. login) before express.json() ever saw it.
 router.use(express.text({ type: () => true, limit: "2mb" }));
 
 function serialFromQuery(req: Request): string | null {
@@ -39,7 +43,7 @@ function textReply(res: Response, body: string): void {
 // instead of batching) and Encrypt=0 (we don't implement the optional
 // payload encryption) — this is the same minimal reply every open-source
 // ADMS server implementation replies with.
-router.get("/iclock/cdata", (req: Request, res: Response): void => {
+router.get("/cdata", (req: Request, res: Response): void => {
   const sn = serialFromQuery(req);
   req.log.info({ sn }, "ZKTeco device handshake");
   textReply(
@@ -50,7 +54,7 @@ router.get("/iclock/cdata", (req: Request, res: Response): void => {
   );
 });
 
-router.post("/iclock/cdata", async (req: Request, res: Response): Promise<void> => {
+router.post("/cdata", async (req: Request, res: Response): Promise<void> => {
   const sn = serialFromQuery(req);
   const table = typeof req.query.table === "string" ? req.query.table : "";
   const body = typeof req.body === "string" ? req.body : "";
@@ -84,18 +88,18 @@ router.post("/iclock/cdata", async (req: Request, res: Response): Promise<void> 
 // No command queue is implemented — the terminal is provisioned by hand
 // (fingerprints enrolled on its own keypad, PINs entered in Settings), so
 // there's never a pending command for it to pick up here.
-router.get("/iclock/getrequest", (_req: Request, res: Response): void => {
+router.get("/getrequest", (_req: Request, res: Response): void => {
   textReply(res, "OK");
 });
 
-router.post("/iclock/devicecmd", (_req: Request, res: Response): void => {
+router.post("/devicecmd", (_req: Request, res: Response): void => {
   textReply(res, "OK");
 });
 
 // The F22 has no camera, but other terminals in this product line push a
 // photo alongside a punch; ack it so firmware that probes this path
 // doesn't sit there retrying.
-router.post("/iclock/fdata", (_req: Request, res: Response): void => {
+router.post("/fdata", (_req: Request, res: Response): void => {
   textReply(res, "OK");
 });
 
