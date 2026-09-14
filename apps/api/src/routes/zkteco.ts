@@ -6,9 +6,8 @@ import {
   type BiometricDevice,
 } from "../lib/biometricDevices";
 import { findEmployeeByPunchPin } from "../lib/employees";
-import { appendAttendanceRow, attendancePunchExists, getLastAttendanceLog } from "../lib/attendanceLogs";
+import { appendAttendanceRow, recentDuplicatePunch, getLastAttendanceLog } from "../lib/attendanceLogs";
 import { getOrgById } from "../lib/orgs";
-import { zonedTimeToUtc } from "../lib/timezone";
 import type { Logger } from "pino";
 
 const router: IRouter = Router();
@@ -119,30 +118,34 @@ async function ingestAttLog(device: BiometricDevice, body: string, log: Logger):
     if (!pin || !rawTime) continue;
 
     try {
-      await ingestPunch(device, timeZone, pin, rawTime, log);
+      await ingestPunch(device, timeZone, pin, log);
     } catch (err) {
       log.error({ err, pin, rawTime }, "Failed to record fingerprint punch");
     }
   }
 }
 
-async function ingestPunch(device: BiometricDevice, timeZone: string, pin: string, rawTime: string, log: Logger): Promise<void> {
+async function ingestPunch(device: BiometricDevice, timeZone: string, pin: string, log: Logger): Promise<void> {
   const employee = await findEmployeeByPunchPin(device.orgId, pin);
   if (!employee) {
     log.warn({ pin, orgId: device.orgId }, "Fingerprint punch for an unrecognized PIN — set it as the employee's biometric PIN");
     return;
   }
 
-  const occurredAt = zonedTimeToUtc(rawTime, timeZone);
-  if (!occurredAt) {
-    log.warn({ rawTime }, "Unparseable ZKTeco punch timestamp");
-    return;
-  }
+  // Deliberately NOT using the terminal's own reported punch time:
+  // ZKTeco's ADMS protocol has the device resync its hardware clock off
+  // this server's HTTP response on every heartbeat, so its self-reported
+  // clock drifts to whatever that resolves to combined with the unit's
+  // own GMT offset — observed hours off from reality in practice, and not
+  // fixable by hand on the keypad since the next heartbeat just resets it
+  // again. Punches push in real time (Realtime=1 in our handshake reply),
+  // so the server's own receipt time is the reliable value here.
+  const occurredAt = new Date();
 
   // The terminal retries a batch until it gets "OK" back, so the same
-  // punch can arrive more than once — this is the guard against
-  // double-recording it.
-  if (await attendancePunchExists(device.orgId, employee.id, device.id, occurredAt)) return;
+  // punch can arrive more than once within a few seconds — this is the
+  // guard against double-recording it.
+  if (await recentDuplicatePunch(device.orgId, employee.id, device.id, occurredAt)) return;
 
   // The terminal itself doesn't reliably tell us check-in vs check-out (a
   // bare keypad F22 has no state selector) — toggle off whatever this

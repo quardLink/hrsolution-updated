@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { getDb, schema } from "../db/client";
 
 export interface AttendanceLogRow {
@@ -58,12 +58,18 @@ export async function getLastAttendanceLog(
 
 // A terminal retries a push until it gets an "OK" back, so the same batch
 // of punches can arrive more than once — this is the guard against
-// double-inserting the same physical punch.
-export async function attendancePunchExists(
+// double-inserting the same physical punch. Windowed on recency (not an
+// exact timestamp match) because the recorded time is now the server's
+// own receipt time, which necessarily differs slightly between a push and
+// its retry; retries happen within seconds, so a 60s window (matching the
+// ErrorDelay we hand back in the ADMS handshake) comfortably catches them
+// without needing the terminal's own (unreliable) clock at all.
+export async function recentDuplicatePunch(
   orgId: string,
   employeeCode: string,
   biometricDeviceId: string,
-  occurredAt: Date,
+  now: Date,
+  windowMs = 60_000,
 ): Promise<boolean> {
   const db = getDb();
   const row = await db.query.attendanceLogs.findFirst({
@@ -71,7 +77,7 @@ export async function attendancePunchExists(
       eq(schema.attendanceLogs.orgId, orgId),
       eq(schema.attendanceLogs.employeeCode, employeeCode),
       eq(schema.attendanceLogs.biometricDeviceId, biometricDeviceId),
-      eq(schema.attendanceLogs.occurredAt, occurredAt),
+      gte(schema.attendanceLogs.createdAt, new Date(now.getTime() - windowMs)),
     ),
   });
   return !!row;
