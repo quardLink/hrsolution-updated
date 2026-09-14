@@ -119,6 +119,13 @@ export const attendanceLogs = pgTable("attendance_logs", {
   message: text("message").notNull(),
   deviceId: uuid("device_id").references(() => devices.id),
   biometricDeviceId: uuid("biometric_device_id").references(() => biometricDevices.id),
+  // The raw, verbatim timestamp string a fingerprint terminal sent for
+  // this punch — not trusted as the actual event time (the terminal's
+  // clock is unreliable, see occurredAt below), but a retry of the same
+  // physical punch resends this identical string, which is what makes it
+  // useful as a dedup key: two punches this close together with different
+  // raw strings are genuinely different events, not a retry.
+  sourceRawTimestamp: text("source_raw_timestamp"),
   // The actual moment the event happened (kiosk tap or fingerprint punch),
   // as opposed to `createdAt` (row insertion time). These match for kiosk
   // rows, but diverge for a fingerprint terminal that was offline and
