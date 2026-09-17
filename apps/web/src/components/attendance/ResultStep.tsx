@@ -13,7 +13,7 @@ export default function ResultStep({ sessionLabel, employeeName, timestamp, onDo
   const { t } = useLocale();
   return (
     <div className="w-full max-w-sm space-y-5">
-      <div className="bg-card border border-border rounded-2xl p-8 shadow-xl text-center space-y-5">
+      <div className="bg-card border border-border rounded-2xl p-8 shadow-panel text-center space-y-5">
         <div className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-10 h-10 text-emerald-500" />
         </div>
@@ -26,7 +26,7 @@ export default function ResultStep({ sessionLabel, employeeName, timestamp, onDo
         </div>
 
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3">
-          <p className="text-emerald-400 text-sm font-semibold">{t("kiosk.recordedSuccess")}</p>
+          <p className="text-emerald-600 text-sm font-semibold">{t("kiosk.recordedSuccess")}</p>
         </div>
 
         <div className="text-muted-foreground text-xs">

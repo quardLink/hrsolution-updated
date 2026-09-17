@@ -142,9 +142,9 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-7 shadow-xl space-y-5">
+      <div className="bg-card border border-border rounded-2xl p-7 shadow-panel space-y-5">
         {error && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-red-400 text-sm text-center font-medium">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-destructive text-sm text-center font-medium">
             {error}
           </div>
         )}
@@ -167,8 +167,8 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
           {status === "scanning" && <span className="text-primary animate-pulse">{t("kiosk.faceScanning")}</span>}
           {status === "liveness" && <span className="text-primary animate-pulse">{t("kiosk.faceBlinkConfirm")}</span>}
           {status === "found" && <span className="text-primary">{t("kiosk.faceVerified")}</span>}
-          {status === "denied" && <span className="text-red-400">{t("kiosk.faceDeniedLong")}</span>}
-          {status === "error" && <span className="text-red-400">{t("kiosk.faceSnag")}</span>}
+          {status === "denied" && <span className="text-destructive">{t("kiosk.faceDeniedLong")}</span>}
+          {status === "error" && <span className="text-destructive">{t("kiosk.faceSnag")}</span>}
         </div>
 
         {status === "error" && (

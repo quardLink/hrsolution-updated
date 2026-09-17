@@ -25,6 +25,13 @@ export interface AttendanceReportInput {
   summary: DaySummary[];
   filterFromDate: string;
   filterToDate: string;
+  orgName?: string;
+}
+
+function periodTextFor(filterFromDate: string, filterToDate: string): string {
+  return filterFromDate && filterToDate
+    ? `${new Date(filterFromDate).toLocaleDateString()} – ${new Date(filterToDate).toLocaleDateString()}`
+    : "All Time";
 }
 
 export function exportAttendanceReportPdf({
@@ -33,15 +40,13 @@ export function exportAttendanceReportPdf({
   summary,
   filterFromDate,
   filterToDate,
+  orgName,
 }: AttendanceReportInput): void {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
   const generated = new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" });
-  const periodText =
-    filterFromDate && filterToDate
-      ? `${new Date(filterFromDate).toLocaleDateString()} – ${new Date(filterToDate).toLocaleDateString()}`
-      : "All Time";
+  const periodText = periodTextFor(filterFromDate, filterToDate);
 
   drawReportBanner(doc, {
     pageWidth,
@@ -49,6 +54,7 @@ export function exportAttendanceReportPdf({
     bannerHeight: 110,
     titleY: 50,
     subtitleY: 70,
+    orgName,
     subtitle: "Employee Attendance Report",
     detailLines: [
       { text: `Period: ${periodText}`, y: 88 },
@@ -144,9 +150,17 @@ export function exportAttendanceReportPdf({
   doc.addPage();
   y = 40;
   y = drawSectionTitle(doc, pageWidth, margin, y, "Daily Attendance Log", 12);
+  drawDailyLogTable(doc, summary, margin, y);
 
+  drawFooterOnEveryPage(doc, pageWidth, orgName);
+
+  const fileDate = new Date().toISOString().slice(0, 10);
+  doc.save(`Attendance_Report_${fileDate}.pdf`);
+}
+
+function drawDailyLogTable(doc: jsPDF, summary: DaySummary[], margin: number, startY: number): void {
   autoTable(doc, {
-    startY: y,
+    startY,
     head: [["Date", "Employee", "First In", "Last Out", "Hours", "Late", "Status"]],
     body: summary.map((s) => [
       formatDate(s.dateObj),
@@ -172,9 +186,45 @@ export function exportAttendanceReportPdf({
       }
     },
   });
+}
 
-  drawFooterOnEveryPage(doc, pageWidth);
+export interface AttendanceOnlyReportInput {
+  summary: DaySummary[];
+  filterFromDate: string;
+  filterToDate: string;
+  orgName?: string;
+}
+
+// A stripped-down export for when the full report's performance
+// rankings/scores aren't wanted (e.g. sharing outside the org) — just the
+// raw check-in/check-out log, nothing else.
+export function exportAttendanceOnlyPdf({ summary, filterFromDate, filterToDate, orgName }: AttendanceOnlyReportInput): void {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  const generated = new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" });
+  const periodText = periodTextFor(filterFromDate, filterToDate);
+
+  drawReportBanner(doc, {
+    pageWidth,
+    margin,
+    bannerHeight: 110,
+    titleY: 50,
+    subtitleY: 70,
+    orgName,
+    subtitle: "Employee Attendance Log",
+    detailLines: [
+      { text: `Period: ${periodText}`, y: 88 },
+      { text: `Generated: ${generated}`, y: 100 },
+    ],
+  });
+
+  let y = 140;
+  y = drawSectionTitle(doc, pageWidth, margin, y, "Daily Attendance Log", 18);
+  drawDailyLogTable(doc, summary, margin, y);
+
+  drawFooterOnEveryPage(doc, pageWidth, orgName);
 
   const fileDate = new Date().toISOString().slice(0, 10);
-  doc.save(`PST_Attendance_Report_${fileDate}.pdf`);
+  doc.save(`Attendance_Only_${fileDate}.pdf`);
 }

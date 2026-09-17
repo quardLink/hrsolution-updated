@@ -45,6 +45,24 @@
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
 
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
+  /* "Block" accents — bold, flat pastel card fills (yellow/pink/green/
+     blue), each identity-mapped to one dashboard concept rather than
+     assigned at random: yellow=headcount, pink=attendance/visits,
+     green=leave/approved, blue=time/schedule. Inspired by the reference's
+     color-blocked stat cards, dialed back from its saturation to stay
+     legible against this app's neutral surfaces in both themes. */
+  --color-block-yellow: hsl(var(--block-yellow));
+  --color-block-yellow-foreground: hsl(var(--block-yellow-foreground));
+  --color-block-pink: hsl(var(--block-pink));
+  --color-block-pink-foreground: hsl(var(--block-pink-foreground));
+  --color-block-green: hsl(var(--block-green));
+  --color-block-green-foreground: hsl(var(--block-green-foreground));
+  --color-block-blue: hsl(var(--block-blue));
+  --color-block-blue-foreground: hsl(var(--block-blue-foreground));
+
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
   --color-chart-3: hsl(var(--chart-3));
@@ -72,61 +90,172 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root {
-  --button-outline: rgba(255,255,255, .12);
-  --badge-outline: rgba(255,255,255, .08);
-  --opaque-button-border-intensity: 8;
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .08);
+/* ============================================================
+   Design tokens — light (default) and dark (.dark) themes.
 
-  --background: 240 8% 5%;
-  --foreground: 0 0% 96%;
-  --border: 240 6% 16%;
-  --card: 240 7% 8%;
-  --card-foreground: 0 0% 96%;
-  --card-border: 240 6% 17%;
-  --sidebar: 240 8% 6%;
-  --sidebar-foreground: 0 0% 90%;
-  --sidebar-border: 240 6% 14%;
-  --sidebar-primary: 243 75% 65%;
+   Both are intentionally distinct palettes (not a mechanical invert):
+   light uses a warm off-white surface with a deep charcoal ink and
+   black-tinted overlay/border helpers; dark uses a cool near-black
+   surface with soft-white ink and white-tinted helpers. Every token
+   keeps the same name across both blocks so components that reference
+   them (bg-background, text-foreground, bg-card, etc.) never need to
+   know which theme is active — only the values here change.
+   ============================================================ */
+
+:root {
+  /* Light mode: warm, near-white surfaces; black-based overlay tints
+     (a light UI's hover/press/outline states darken toward black,
+     mirroring how dark mode's lighten toward white below). */
+  --button-outline: rgba(20, 16, 10, .10);
+  --badge-outline: rgba(20, 16, 10, .07);
+  --opaque-button-border-intensity: 8;
+  --elevate-1: rgba(20, 16, 10, .035);
+  --elevate-2: rgba(20, 16, 10, .07);
+
+  --background: 36 38% 97%;
+  --foreground: 240 10% 12%;
+  --border: 30 15% 88%;
+  --card: 40 35% 99%;
+  --card-foreground: 240 10% 12%;
+  --card-border: 30 15% 91%;
+  --sidebar: 33 22% 95%;
+  --sidebar-foreground: 240 10% 15%;
+  --sidebar-border: 30 15% 88%;
+  --sidebar-primary: 160 64% 34%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 6% 14%;
-  --sidebar-accent-foreground: 0 0% 96%;
-  --sidebar-ring: 243 75% 65%;
-  --popover: 240 8% 9%;
-  --popover-foreground: 0 0% 96%;
-  --popover-border: 240 6% 18%;
-  --primary: 243 75% 65%;
+  --sidebar-accent: 30 20% 91%;
+  --sidebar-accent-foreground: 240 10% 15%;
+  --sidebar-ring: 160 64% 34%;
+  --popover: 40 35% 99%;
+  --popover-foreground: 240 10% 12%;
+  --popover-border: 30 15% 91%;
+  --primary: 160 64% 34%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 6% 13%;
-  --secondary-foreground: 0 0% 92%;
-  --muted: 240 6% 11%;
-  --muted-foreground: 240 5% 60%;
-  --accent: 243 75% 65%;
+  --secondary: 30 20% 94%;
+  --secondary-foreground: 240 8% 20%;
+  --muted: 30 20% 94%;
+  --muted-foreground: 240 6% 45%;
+  --accent: 160 64% 34%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 72% 58%;
+  --destructive: 0 70% 50%;
   --destructive-foreground: 0 0% 100%;
-  --success: 152 60% 45%;
+  --success: 152 55% 36%;
   --success-foreground: 0 0% 100%;
-  --warning: 38 92% 55%;
-  --warning-foreground: 20 30% 10%;
-  --input: 240 6% 18%;
-  --ring: 243 75% 65%;
-  --chart-1: 217 90% 65%;
-  --chart-2: 152 60% 50%;
-  --chart-3: 38 92% 55%;
-  --chart-4: 0 72% 58%;
-  --chart-5: 280 65% 68%;
+  --warning: 38 85% 45%;
+  --warning-foreground: 20 40% 12%;
+  --info: 217 80% 48%;
+  --info-foreground: 0 0% 100%;
+  --input: 30 15% 88%;
+  --ring: 160 64% 34%;
+
+  --block-yellow: 45 88% 72%;
+  --block-yellow-foreground: 240 10% 14%;
+  --block-pink: 350 72% 80%;
+  --block-pink-foreground: 240 10% 14%;
+  --block-green: 100 45% 66%;
+  --block-green-foreground: 240 10% 14%;
+  --block-blue: 212 68% 76%;
+  --block-blue-foreground: 240 10% 14%;
+
+  --chart-1: 217 80% 48%;
+  --chart-2: 152 55% 38%;
+  --chart-3: 38 85% 45%;
+  --chart-4: 0 70% 50%;
+  --chart-5: 280 55% 50%;
 
   --app-font-sans: 'Inter', 'Segoe UI', sans-serif;
   --app-font-sans-ar: 'IBM Plex Sans Arabic', 'Inter', 'Segoe UI', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: .75rem;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
-  --shadow: 0 4px 16px rgba(0,0,0,.4), 0 2px 6px rgba(0,0,0,.2);
-  --shadow-lg: 0 12px 36px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.3);
-  --shadow-xl: 0 24px 60px rgba(0,0,0,.55), 0 8px 24px rgba(0,0,0,.3);
+  --radius: 1.25rem;
+  --shadow-sm: 0 1px 2px rgba(30,24,14,.05);
+  --shadow: 0 2px 8px rgba(30,24,14,.06), 0 1px 2px rgba(30,24,14,.04);
+  --shadow-lg: 0 8px 24px rgba(30,24,14,.08), 0 2px 6px rgba(30,24,14,.05);
+  --shadow-xl: 0 16px 40px rgba(30,24,14,.10), 0 4px 12px rgba(30,24,14,.06);
+
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l - var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l - var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l - var(--opaque-button-border-intensity)) / alpha);
+  --tracking-normal: -0.01em;
+  --spacing: 0.25rem;
+  /* The shadcn sidebar primitive's "floating"/"inset" variants reference
+     this directly (e.g. calc(var(--sidebar-width-icon) + var(--spacing-4)))
+     for their collapsed-width math. Tailwind v4 doesn't auto-generate named
+     scale variables like this from the bare --spacing unit — without it,
+     that calc() is invalid, the collapsed sidebar's reserved layout width
+     silently collapses, and page content overlaps the icon rail. */
+  --spacing-4: calc(var(--spacing) * 4);
+}
+
+.dark {
+  /* Dark mode: cool near-black surfaces; white-based overlay tints. */
+  --button-outline: rgba(255,255,255, .12);
+  --badge-outline: rgba(255,255,255, .08);
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .08);
+
+  --background: 220 14% 6%;
+  --foreground: 0 0% 95%;
+  --border: 220 10% 16%;
+  --card: 220 14% 9%;
+  --card-foreground: 0 0% 95%;
+  --card-border: 220 10% 17%;
+  --sidebar: 220 16% 4%;
+  --sidebar-foreground: 0 0% 92%;
+  --sidebar-border: 220 10% 14%;
+  --sidebar-primary: 160 55% 52%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 10% 14%;
+  --sidebar-accent-foreground: 0 0% 96%;
+  --sidebar-ring: 160 55% 52%;
+  --popover: 220 14% 10%;
+  --popover-foreground: 0 0% 95%;
+  --popover-border: 220 10% 18%;
+  --primary: 160 55% 52%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 10% 14%;
+  --secondary-foreground: 0 0% 92%;
+  --muted: 220 10% 12%;
+  --muted-foreground: 220 8% 62%;
+  --accent: 160 55% 52%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 152 55% 48%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 90% 55%;
+  --warning-foreground: 20 30% 10%;
+  --info: 217 85% 62%;
+  --info-foreground: 0 0% 100%;
+  --input: 220 10% 18%;
+  --ring: 160 55% 52%;
+
+  /* Same block identities as light mode, deepened into muted tinted
+     surfaces (rather than kept pastel-bright) so they read as cards
+     against a near-black page instead of glowing. */
+  --block-yellow: 42 35% 22%;
+  --block-yellow-foreground: 45 70% 85%;
+  --block-pink: 350 35% 24%;
+  --block-pink-foreground: 350 55% 88%;
+  --block-green: 100 22% 20%;
+  --block-green-foreground: 100 35% 82%;
+  --block-blue: 212 35% 24%;
+  --block-blue-foreground: 212 55% 86%;
+
+  --chart-1: 217 85% 62%;
+  --chart-2: 152 55% 48%;
+  --chart-3: 38 90% 55%;
+  --chart-4: 0 72% 58%;
+  --chart-5: 280 60% 68%;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+  --shadow: 0 4px 12px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.2);
+  --shadow-lg: 0 10px 28px rgba(0,0,0,.4), 0 3px 10px rgba(0,0,0,.25);
+  --shadow-xl: 0 20px 48px rgba(0,0,0,.45), 0 6px 18px rgba(0,0,0,.25);
 
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -135,8 +264,21 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-  --tracking-normal: -0.01em;
-  --spacing: 0.25rem;
+}
+
+/* Tailwind's own shadow-sm/lg/xl/2xl utilities bake in a fixed literal
+   box-shadow at build time (checked the compiled CSS: `.shadow-xl` hard-
+   codes "0 20px 25px..." regardless of theme) — they never read the
+   --shadow-* tokens above at all, in either theme. These utilities do,
+   via var(), so switching themes actually changes them. */
+@utility shadow-elevated {
+  box-shadow: var(--shadow);
+}
+@utility shadow-panel {
+  box-shadow: var(--shadow-lg);
+}
+@utility shadow-floating {
+  box-shadow: var(--shadow-xl);
 }
 
 @layer base {
@@ -144,6 +286,9 @@
     @apply border-border;
   }
   html {
+    color-scheme: light;
+  }
+  html.dark {
     color-scheme: dark;
   }
   html[dir="rtl"] {
@@ -152,6 +297,12 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
+  }
+  /* Smooth, cheap theme switch: only color-ish properties transition,
+     so it can't introduce a layout shift, and it's short enough to
+     feel instant rather than sluggish. */
+  *, ::before, ::after {
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, fill 180ms ease, stroke 180ms ease;
   }
   ::selection {
     background: hsl(var(--accent) / 0.35);

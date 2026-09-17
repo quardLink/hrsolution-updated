@@ -15,15 +15,6 @@ import { SESSION_LABELS, useAttendanceWizard } from "../hooks/useAttendanceWizar
 import { useCheckOutReminder } from "../hooks/useCheckOutReminder";
 import { useOrgInfo } from "../hooks/useOrgInfo";
 
-function KioskGlow() {
-  return (
-    <div className="pointer-events-none fixed inset-0 overflow-hidden">
-      <div className="absolute -top-40 start-1/2 -translate-x-1/2 w-150 h-150 rounded-full bg-primary/20 blur-[120px]" />
-      <div className="absolute bottom-0 end-0 w-100 h-100 rounded-full bg-violet-600/10 blur-[100px]" />
-    </div>
-  );
-}
-
 function LanguageToggle() {
   const { locale, setLocale } = useLocale();
   return (
@@ -71,7 +62,6 @@ export default function AttendancePage() {
   if (step === "splash") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
-        <KioskGlow />
         <div className="absolute top-4 end-4 flex items-center gap-2">
           <LanguageToggle />
           <Link
@@ -86,14 +76,14 @@ export default function AttendancePage() {
           style={{ animation: "fadeIn 1s ease-out forwards" }}
         >
           <div className="relative">
-            <div className="w-40 h-40 rounded-2xl bg-white border border-border flex items-center justify-center shadow-2xl p-3">
+            <div className="w-40 h-40 rounded-2xl bg-white border border-border flex items-center justify-center shadow-floating p-3">
               {org?.logoDataUrl ? (
                 <img src={org.logoDataUrl} alt="" className="w-full h-full object-contain" />
               ) : (
                 <Building2 className="w-16 h-16 text-slate-400" />
               )}
             </div>
-            <div className="absolute -bottom-3 -end-3 w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg">
+            <div className="absolute -bottom-3 -end-3 w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-panel">
               <Check className="w-5 h-5 text-primary-foreground" />
             </div>
           </div>
@@ -122,7 +112,6 @@ export default function AttendancePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
-      <KioskGlow />
       <PoweredBy />
       {reminder && <ReminderBanner reminder={reminder} onDismiss={dismiss} />}
 

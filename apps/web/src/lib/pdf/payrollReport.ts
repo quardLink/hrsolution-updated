@@ -35,9 +35,10 @@ export interface PayrollReportInput {
   year: number;
   month: number;
   results: PayrollResult[];
+  orgName?: string;
 }
 
-export function exportPayrollReportPdf({ year, month, results }: PayrollReportInput): void {
+export function exportPayrollReportPdf({ year, month, results, orgName }: PayrollReportInput): void {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
@@ -54,6 +55,7 @@ export function exportPayrollReportPdf({ year, month, results }: PayrollReportIn
     bannerHeight: 90,
     titleY: 42,
     subtitleY: 62,
+    orgName,
     subtitle: `Payroll Report — ${periodText}`,
     detailLines: [{ text: `Generated: ${generated}`, y: 78 }],
   });
@@ -102,7 +104,7 @@ export function exportPayrollReportPdf({ year, month, results }: PayrollReportIn
     margin: { left: margin, right: margin },
   });
 
-  drawFooterOnEveryPage(doc, pageWidth);
+  drawFooterOnEveryPage(doc, pageWidth, orgName);
 
   doc.save(`PST_Payroll_${periodText.replace(" ", "_")}.pdf`);
 }

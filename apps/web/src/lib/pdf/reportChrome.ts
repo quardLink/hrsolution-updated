@@ -20,16 +20,20 @@ export interface ReportBannerOptions {
   subtitleY: number;
   subtitle: string;
   detailLines: ReportBannerLine[];
+  // Org name shown as the banner title — every tenant sees their own firm's
+  // name on their export, not a fixed placeholder from whichever org this
+  // report format was first built for.
+  orgName?: string;
 }
 
 export function drawReportBanner(doc: jsPDF, opts: ReportBannerOptions): void {
-  const { pageWidth, margin, bannerHeight, titleY, subtitleY, subtitle, detailLines } = opts;
+  const { pageWidth, margin, bannerHeight, titleY, subtitleY, subtitle, detailLines, orgName } = opts;
   doc.setFillColor(15, 23, 42);
   doc.rect(0, 0, pageWidth, bannerHeight, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("PETRO SAFE TECH", margin, titleY);
+  doc.text((orgName || "Your Firm").toUpperCase(), margin, titleY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(180, 200, 230);
@@ -40,7 +44,7 @@ export function drawReportBanner(doc: jsPDF, opts: ReportBannerOptions): void {
   }
 }
 
-export function drawFooterOnEveryPage(doc: jsPDF, pageWidth: number): void {
+export function drawFooterOnEveryPage(doc: jsPDF, pageWidth: number, orgName?: string): void {
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
@@ -48,7 +52,7 @@ export function drawFooterOnEveryPage(doc: jsPDF, pageWidth: number): void {
     doc.setTextColor(140);
     doc.setFont("helvetica", "normal");
     doc.text(
-      `Petro Safe Tech — Confidential  |  Page ${i} of ${total}`,
+      `${orgName || "Your Firm"} — Confidential  |  Page ${i} of ${total}`,
       pageWidth / 2,
       doc.internal.pageSize.getHeight() - 20,
       { align: "center" },

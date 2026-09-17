@@ -12,7 +12,7 @@ import RankingsView from "../components/admin/reports/RankingsView";
 import AttendanceSummaryView from "../components/admin/reports/AttendanceSummaryView";
 import { useAdminAuth } from "../hooks/useAdminAuth";
 import { useAttendanceAnalytics } from "../hooks/useAttendanceAnalytics";
-import { exportAttendanceReportPdf } from "../lib/pdf/attendanceReport";
+import { exportAttendanceReportPdf, exportAttendanceOnlyPdf } from "../lib/pdf/attendanceReport";
 import { AdminApiProvider } from "../contexts/AdminApiContext";
 import { useLocale } from "../contexts/LocaleContext";
 
@@ -72,7 +72,7 @@ export default function AdminPage() {
         logoDataUrl={org?.logoDataUrl}
       >
         {error && (
-          <div className="bg-destructive/10 border border-destructive/30 text-red-400 rounded-xl p-3 lg:p-4 text-sm">
+          <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-xl p-3 lg:p-4 text-sm">
             {error}
           </div>
         )}
@@ -91,7 +91,12 @@ export default function AdminPage() {
               onFilterEmployeeChange={setFilterEmployee}
               employees={employees}
               onExportPdf={() =>
-                exportAttendanceReportPdf({ stats, rankings, summary, filterFromDate, filterToDate })
+                exportAttendanceReportPdf({ stats, rankings, summary, filterFromDate, filterToDate, orgName: org?.name })
+              }
+              onExportAttendanceOnly={
+                view === "summary"
+                  ? () => exportAttendanceOnlyPdf({ summary, filterFromDate, filterToDate, orgName: org?.name })
+                  : undefined
               }
             />
 
@@ -107,7 +112,7 @@ export default function AdminPage() {
 
         {view === "leave" && <LeaveRequestsTab />}
 
-        {view === "payroll" && <PayrollTab />}
+        {view === "payroll" && <PayrollTab orgName={org?.name} />}
 
         {view === "settings" && <SettingsTab />}
       </AdminShell>

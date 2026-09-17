@@ -60,7 +60,7 @@ export default function KioskPairingScreen({ baseUrl, onPaired }: Props) {
           <p className="text-muted-foreground text-sm mt-1">{t("kiosk.pairSubtitle")}</p>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-7 shadow-xl space-y-6">
+        <div className="bg-card border border-border rounded-2xl p-7 shadow-panel space-y-6">
           <div className="flex justify-center gap-2">
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <div
@@ -77,7 +77,7 @@ export default function KioskPairingScreen({ baseUrl, onPaired }: Props) {
           </div>
 
           {error && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-red-400 text-sm text-center font-medium">
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-destructive text-sm text-center font-medium">
               {error}
             </div>
           )}

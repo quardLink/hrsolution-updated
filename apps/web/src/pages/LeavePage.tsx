@@ -61,7 +61,7 @@ export default function LeavePage() {
           </button>
         </div>
 
-        <div className="bg-card rounded-2xl shadow-lg border border-border overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-panel border border-border overflow-hidden">
           <div className="px-5 sm:px-6 py-5 bg-gradient-to-br from-indigo-600 to-violet-700 text-white">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center">

@@ -142,7 +142,7 @@ export default function LeaveRequestForm({ baseUrl, orgSlug, employees, loadingE
       </div>
 
       {error && (
-        <div className="bg-destructive/10 border border-destructive/30 text-red-400 text-sm rounded-lg px-3 py-2">{error}</div>
+        <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-3 py-2">{error}</div>
       )}
 
       <Button type="submit" disabled={submitting} className="w-full" size="lg">

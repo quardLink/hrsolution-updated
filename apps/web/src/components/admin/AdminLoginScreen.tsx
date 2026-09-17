@@ -25,7 +25,7 @@ export default function AdminLoginScreen({ authError, loading, onSubmit }: Props
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-150 h-150 rounded-full bg-primary/20 blur-[120px]" />
-      <Card className="w-full max-w-sm shadow-2xl relative">
+      <Card className="w-full max-w-sm shadow-floating relative">
         <CardContent className="p-8 space-y-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="text-center">

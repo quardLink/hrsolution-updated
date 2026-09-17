@@ -2,9 +2,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLocale } from "@/contexts/LocaleContext";
 import type { EmployeeRanking } from "../../../hooks/useAttendanceAnalytics";
-import PodiumCard from "./PodiumCard";
 import ScoreBar from "./ScoreBar";
 import GradeBadge from "./GradeBadge";
+import RankingsChart from "./RankingsChart";
 
 interface Props {
   rankings: EmployeeRanking[];
@@ -15,13 +15,7 @@ export default function RankingsView({ rankings, totalDaysInPeriod }: Props) {
   const { t } = useLocale();
   return (
     <div className="space-y-5 lg:space-y-6">
-      {rankings.length >= 3 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <PodiumCard rank={2} ranking={rankings[1]} />
-          <PodiumCard rank={1} ranking={rankings[0]} />
-          <PodiumCard rank={3} ranking={rankings[2]} />
-        </div>
-      )}
+      <RankingsChart rankings={rankings} />
 
       <Card className="overflow-hidden py-0 gap-0">
         <CardHeader className="flex-row items-center justify-between border-b py-3.5 gap-2">
@@ -52,9 +46,15 @@ export default function RankingsView({ rankings, totalDaysInPeriod }: Props) {
             </TableHeader>
             <TableBody>
               {rankings.map((r, i) => (
-                <TableRow key={r.employeeId} className={i < 3 ? "bg-amber-500/5" : ""}>
-                  <TableCell className="text-center font-bold">
-                    {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
+                <TableRow key={r.employeeId}>
+                  <TableCell className="text-center">
+                    <span
+                      className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold tabular-nums ${
+                        i < 3 ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
                   </TableCell>
                   <TableCell className="ps-5">
                     <div className="font-semibold">{r.employeeName}</div>

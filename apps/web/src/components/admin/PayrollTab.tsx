@@ -11,7 +11,7 @@ import { exportPayrollReportPdf, type PayrollResult } from "../../lib/pdf/payrol
 
 const now = new Date();
 
-export default function PayrollTab() {
+export default function PayrollTab({ orgName }: { orgName?: string }) {
   const { t, dict } = useLocale();
   const { baseUrl, onError } = useAdminApi();
   const [year, setYear] = useState(now.getFullYear());
@@ -78,7 +78,7 @@ export default function PayrollTab() {
             {loading ? t("payroll.calculating") : t("payroll.run")}
           </Button>
           {hasRun && results.length > 0 && (
-            <Button variant="secondary" onClick={() => exportPayrollReportPdf({ year, month, results })}>
+            <Button variant="secondary" onClick={() => exportPayrollReportPdf({ year, month, results, orgName })}>
               <Download /> {t("payroll.exportPdf")}
             </Button>
           )}

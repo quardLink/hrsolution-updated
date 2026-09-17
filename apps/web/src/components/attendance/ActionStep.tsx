@@ -13,7 +13,7 @@ export default function ActionStep({ onSelect }: { onSelect: (action: Action) =>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <button
           onClick={() => onSelect("checkin")}
-          className="group relative overflow-hidden bg-card rounded-2xl p-8 lg:p-10 shadow-xl border border-border hover:border-primary/50 hover:scale-[1.02] transition-all duration-200 cursor-pointer text-start"
+          className="group relative overflow-hidden bg-card rounded-2xl p-8 lg:p-10 shadow-panel border border-border hover:border-primary/50 hover:scale-[1.02] transition-all duration-200 cursor-pointer text-start"
         >
           <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl bg-emerald-500/15 flex items-center justify-center mb-5">
             <Sunrise className="w-8 h-8 lg:w-10 lg:h-10 text-emerald-500" />
@@ -23,7 +23,7 @@ export default function ActionStep({ onSelect }: { onSelect: (action: Action) =>
         </button>
         <button
           onClick={() => onSelect("checkout")}
-          className="group relative overflow-hidden bg-card rounded-2xl p-8 lg:p-10 shadow-xl border border-border hover:border-primary/50 hover:scale-[1.02] transition-all duration-200 cursor-pointer text-start"
+          className="group relative overflow-hidden bg-card rounded-2xl p-8 lg:p-10 shadow-panel border border-border hover:border-primary/50 hover:scale-[1.02] transition-all duration-200 cursor-pointer text-start"
         >
           <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl bg-primary/15 flex items-center justify-center mb-5">
             <Moon className="w-8 h-8 lg:w-10 lg:h-10 text-primary" />

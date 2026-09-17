@@ -11,7 +11,7 @@ interface Props {
 export default function BottomSheetModal({ maxWidth = "max-w-md", scrollable = false, children }: Props) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 sm:p-4">
-      <div className={`bg-card border border-border rounded-t-2xl sm:rounded-xl shadow-2xl ${maxWidth} w-full ${scrollable ? "max-h-[92vh] overflow-y-auto" : ""}`}>
+      <div className={`bg-card border border-border rounded-t-2xl sm:rounded-xl shadow-floating ${maxWidth} w-full ${scrollable ? "max-h-[92vh] overflow-y-auto" : ""}`}>
         {children}
       </div>
     </div>

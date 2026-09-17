@@ -30,7 +30,7 @@ export default function PinStep({ employeeName, pin, pinError, isSubmitting, onB
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-7 shadow-xl space-y-6">
+      <div className="bg-card border border-border rounded-2xl p-7 shadow-panel space-y-6">
         <div className="flex justify-center gap-4">
           {[0, 1, 2, 3].map((i) => (
             <div
@@ -47,7 +47,7 @@ export default function PinStep({ employeeName, pin, pinError, isSubmitting, onB
         </div>
 
         {pinError && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-red-400 text-sm text-center font-medium">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-destructive text-sm text-center font-medium">
             {pinError}
           </div>
         )}

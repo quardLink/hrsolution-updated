@@ -144,7 +144,7 @@ export default function SignupPage() {
           ))}
         </div>
 
-        <Card className="shadow-2xl">
+        <Card className="shadow-floating">
           <CardContent className="p-8 space-y-6">
             {step === "account" && (
               <>

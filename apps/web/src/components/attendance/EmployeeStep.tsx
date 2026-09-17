@@ -31,7 +31,7 @@ export default function EmployeeStep({ sessionLabel, employees, onBack, onSelect
           <button
             key={emp.id}
             onClick={() => onSelect(emp.id)}
-            className="bg-card rounded-xl p-5 flex flex-col items-center gap-3 shadow-lg hover:scale-[1.03] transition-all duration-150 cursor-pointer text-center border border-border hover:border-primary/50"
+            className="bg-card rounded-xl p-5 flex flex-col items-center gap-3 shadow-panel hover:scale-[1.03] transition-all duration-150 cursor-pointer text-center border border-border hover:border-primary/50"
           >
             <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shrink-0">
               {emp.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}

@@ -5,6 +5,9 @@ import type en from "./en";
 // before a full production launch.
 const ar: typeof en = {
   nav: {
+    groupOverview: "نظرة عامة",
+    groupReports: "التقارير",
+    groupManage: "الإدارة",
     today: "اليوم",
     rankings: "الترتيب",
     records: "السجلات",
@@ -31,6 +34,8 @@ const ar: typeof en = {
     saving: "جارٍ الحفظ...",
     search: "بحث",
     optional: "اختياري",
+    lightMode: "التبديل إلى الوضع الفاتح",
+    darkMode: "التبديل إلى الوضع الداكن",
     name: "الاسم",
     role: "الوظيفة",
     status: "الحالة",
@@ -50,6 +55,8 @@ const ar: typeof en = {
     absent: "غائب",
     onTime: "في الوقت المحدد",
     late: "متأخر",
+    attendanceRate: "نسبة الحضور",
+    overview: "نظرة عامة",
     employees: "الموظفون",
     total: "الإجمالي",
     employee: "الموظف",
@@ -253,9 +260,13 @@ const ar: typeof en = {
     employee: "الموظف",
     allEmployees: "جميع الموظفين",
     exportPdf: "تصدير PDF",
+    exportAttendanceOnly: "الحضور فقط",
+    exportAttendanceOnlyHint: "تصدير سجل الحضور فقط، بدون نتائج الأداء أو الترتيب",
 
     rankingsTitle: "ترتيب الأداء",
     rankingsFormula: "النتيجة = الالتزام بالوقت 40٪ + الحضور 30٪ + الانتظام 30٪",
+    scoreChartTitle: "مقارنة النتائج",
+    scoreChartSubtitle: "النتيجة الإجمالية لكل موظف، الأعلى أولاً",
     period: "الفترة",
     day: "يوم/أيام",
     colRank: "الترتيب",

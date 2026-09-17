@@ -12,12 +12,13 @@ interface Props {
   loading: boolean;
 }
 
-// Alternates two color themes across successive date groups, purely so
+// Alternates a subtle accent across successive date groups, purely so
 // consecutive days are easy to tell apart at a glance when scanning down
-// the page — the color itself carries no status meaning.
+// the page — kept to a thin border-and-dot rather than a solid banner so
+// it doesn't compete with the rest of the app's restrained palette.
 const THEMES = [
-  { header: "bg-blue-600", headerText: "text-white", badge: "bg-white/15 text-white", thead: "bg-blue-700" },
-  { header: "bg-emerald-700", headerText: "text-white", badge: "bg-white/15 text-white", thead: "bg-emerald-800" },
+  { border: "border-s-blue-400", dot: "bg-blue-400" },
+  { border: "border-s-emerald-400", dot: "bg-emerald-400" },
 ];
 
 export default function AttendanceSummaryView({ summary, loading }: Props) {
@@ -66,17 +67,18 @@ function DateGroupCard({
 }) {
   const { t } = useLocale();
   return (
-    <Card className="overflow-hidden py-0 gap-0">
-      <CardHeader className={`flex-row items-center justify-between gap-3 py-3.5 ${theme.header}`}>
-        <div className={`flex items-center gap-2.5 ${theme.headerText}`}>
-          <CalendarDays className="w-5 h-5 shrink-0" />
-          <span className="font-semibold">{formatDate(dateObj)}</span>
+    <Card className={`overflow-hidden py-0 gap-0 border-s-4 ${theme.border}`}>
+      <CardHeader className="flex-row items-center justify-between gap-3 py-3.5 border-b">
+        <div className="flex items-center gap-2.5">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${theme.dot}`} />
+          <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="font-semibold text-sm">{formatDate(dateObj)}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className={`border-transparent ${theme.badge}`}>
+          <Badge variant="outline" className="border-transparent bg-muted text-muted-foreground">
             {t("reports.summaryBadge")}
           </Badge>
-          <span className={`text-sm font-medium ${theme.headerText}`}>
+          <span className="text-sm text-muted-foreground">
             {rows.length} {t("reports.employeesLabel")}
           </span>
         </div>
@@ -84,15 +86,15 @@ function DateGroupCard({
       <CardContent className="p-0">
         <Table>
           <TableHeader>
-            <TableRow className={`hover:bg-transparent ${theme.thead}`}>
-              <TableHead className="ps-5 text-white/90">#</TableHead>
-              <TableHead className="text-white/90">{t("reports.colDate")}</TableHead>
-              <TableHead className="text-white/90">{t("reports.colEmployee")}</TableHead>
-              <TableHead className="text-white/90">{t("reports.colFirstCheckIn")}</TableHead>
-              <TableHead className="text-white/90">{t("reports.colLastCheckOut")}</TableHead>
-              <TableHead className="text-white/90">{t("reports.colHours")}</TableHead>
-              <TableHead className="text-white/90">{t("reports.colLate")}</TableHead>
-              <TableHead className="pe-5 text-white/90">{t("common.status")}</TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="ps-5">#</TableHead>
+              <TableHead>{t("reports.colDate")}</TableHead>
+              <TableHead>{t("reports.colEmployee")}</TableHead>
+              <TableHead>{t("reports.colFirstCheckIn")}</TableHead>
+              <TableHead>{t("reports.colLastCheckOut")}</TableHead>
+              <TableHead>{t("reports.colHours")}</TableHead>
+              <TableHead>{t("reports.colLate")}</TableHead>
+              <TableHead className="pe-5">{t("common.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -23,6 +23,9 @@ interface Props {
   onFilterEmployeeChange: (value: string) => void;
   employees: EmployeeOption[];
   onExportPdf: () => void;
+  // Only offered on the Records view — a plain attendance log with no
+  // performance scores/rankings, for sharing outside the org.
+  onExportAttendanceOnly?: () => void;
 }
 
 export default function ReportFilters({
@@ -35,6 +38,7 @@ export default function ReportFilters({
   onFilterEmployeeChange,
   employees,
   onExportPdf,
+  onExportAttendanceOnly,
 }: Props) {
   const { t } = useLocale();
   return (
@@ -48,8 +52,8 @@ export default function ReportFilters({
       </div>
 
       <Card>
-        <CardContent className="py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+        <CardContent className="py-4 space-y-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("reports.fromDate")}</Label>
               <Input type="date" value={filterFromDate} onChange={(e) => onFilterFromDateChange(e.target.value)} />
@@ -72,9 +76,17 @@ export default function ReportFilters({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={onExportPdf} variant="secondary" className="w-full">
+          </div>
+
+          <div className="flex flex-wrap gap-2 sm:justify-end border-t pt-3.5">
+            <Button onClick={onExportPdf} variant="secondary">
               <Download /> {t("reports.exportPdf")}
             </Button>
+            {onExportAttendanceOnly && (
+              <Button onClick={onExportAttendanceOnly} variant="outline" title={t("reports.exportAttendanceOnlyHint")}>
+                <Download /> {t("reports.exportAttendanceOnly")}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

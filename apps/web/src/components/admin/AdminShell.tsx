@@ -20,6 +20,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -32,6 +33,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/contexts/LocaleContext";
 import PoweredBy from "@/components/PoweredBy";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export type AdminView =
   | "today"
@@ -48,18 +50,29 @@ interface NavItem {
   icon: typeof Home;
 }
 
-const NAV_GROUPS: NavItem[][] = [
-  [{ id: "today", labelKey: "nav.today", icon: Home }],
-  [
-    { id: "rankings", labelKey: "nav.rankings", icon: Trophy },
-    { id: "summary", labelKey: "nav.records", icon: BarChart3 },
-    { id: "payroll", labelKey: "nav.payroll", icon: Wallet },
-  ],
-  [
-    { id: "employees", labelKey: "nav.employees", icon: Users },
-    { id: "leave", labelKey: "nav.leave", icon: CalendarDays },
-    { id: "settings", labelKey: "nav.settings", icon: Settings },
-  ],
+interface NavGroup {
+  groupLabelKey: "nav.groupOverview" | "nav.groupReports" | "nav.groupManage";
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  { groupLabelKey: "nav.groupOverview", items: [{ id: "today", labelKey: "nav.today", icon: Home }] },
+  {
+    groupLabelKey: "nav.groupReports",
+    items: [
+      { id: "rankings", labelKey: "nav.rankings", icon: Trophy },
+      { id: "summary", labelKey: "nav.records", icon: BarChart3 },
+      { id: "payroll", labelKey: "nav.payroll", icon: Wallet },
+    ],
+  },
+  {
+    groupLabelKey: "nav.groupManage",
+    items: [
+      { id: "employees", labelKey: "nav.employees", icon: Users },
+      { id: "leave", labelKey: "nav.leave", icon: CalendarDays },
+      { id: "settings", labelKey: "nav.settings", icon: Settings },
+    ],
+  },
 ];
 
 interface Props {
@@ -89,15 +102,15 @@ export default function AdminShell({
 
   return (
     <SidebarProvider>
-      <Sidebar side={dir === "rtl" ? "right" : "left"} collapsible="icon">
-        <SidebarHeader>
-          <div className="flex items-center gap-2.5 px-2 py-1.5 min-w-0">
+      <Sidebar side={dir === "rtl" ? "right" : "left"} collapsible="icon" variant="floating">
+        <SidebarHeader className="border-b border-sidebar-border/70 mb-1">
+          <div className="flex items-center gap-3 px-2 py-2 min-w-0">
             {logoDataUrl ? (
-              <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center p-1 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center p-1 shrink-0 shadow-sm">
                 <img src={logoDataUrl} alt="" className="w-full h-full object-contain" />
               </div>
             ) : (
-              <div className="w-7 h-7 rounded-md bg-primary/15 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0 shadow-sm">
                 {(orgName || "F")[0].toUpperCase()}
               </div>
             )}
@@ -111,9 +124,10 @@ export default function AdminShell({
           {NAV_GROUPS.map((group, i) => (
             <div key={i}>
               <SidebarGroup>
+                <SidebarGroupLabel>{t(group.groupLabelKey)}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {group.map((item) => (
+                    {group.items.map((item) => (
                       <SidebarMenuItem key={item.id}>
                         <SidebarMenuButton
                           isActive={view === item.id}
@@ -133,7 +147,7 @@ export default function AdminShell({
           ))}
         </SidebarContent>
 
-        <SidebarFooter>
+        <SidebarFooter className="border-t border-sidebar-border/70 pt-2">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -156,7 +170,7 @@ export default function AdminShell({
               <SidebarMenuButton
                 onClick={onLogout}
                 tooltip={t("nav.signOut")}
-                className="text-red-400 hover:text-red-300 hover:bg-destructive/10"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >
                 <LogOut />
                 <span>{t("nav.signOut")}</span>
@@ -168,7 +182,7 @@ export default function AdminShell({
 
       <SidebarInset>
         <header className="sticky top-0 z-20 flex items-center gap-2 h-14 px-4 lg:px-6 border-b border-border bg-background/80 backdrop-blur-md">
-          <SidebarTrigger className="-ms-1" />
+          <SidebarTrigger className="-ms-1 rounded-full" />
           <div className="flex-1" />
           <Button
             variant="ghost"
@@ -176,7 +190,7 @@ export default function AdminShell({
             onClick={onRefresh}
             disabled={loading}
             title={t("common.refresh")}
-            className="text-muted-foreground"
+            className="rounded-full bg-secondary/70 text-muted-foreground"
           >
             <RefreshCw className={loading ? "animate-spin" : ""} />
           </Button>
@@ -185,10 +199,11 @@ export default function AdminShell({
             size="icon"
             onClick={onTestSound}
             title={t("common.testSound")}
-            className="hidden sm:inline-flex text-muted-foreground"
+            className="hidden sm:inline-flex rounded-full bg-secondary/70 text-muted-foreground"
           >
             <Volume2 />
           </Button>
+          <ThemeToggle className="rounded-full bg-secondary/70" />
         </header>
 
         <main className="flex-1 w-full px-4 lg:px-8 py-6 lg:py-8 space-y-5 lg:space-y-6 max-w-7xl mx-auto">

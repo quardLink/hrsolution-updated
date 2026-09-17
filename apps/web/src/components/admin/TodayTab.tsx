@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLocale } from "@/contexts/LocaleContext";
 import { getDateKey, minutesLate, parseTimestamp, formatTime as fmtTime } from "../../lib/attendance";
+import AttendanceRing from "./AttendanceRing";
 
 interface LogEntry {
   timestamp: string;
@@ -106,73 +107,81 @@ export default function TodayTab({ logs, employees }: Props) {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-        <StatCard icon={UserCheck} label={t("today.present")} value={presentCount} total={employees.length} tone="emerald" />
-        <StatCard icon={UserX} label={t("today.absent")} value={absentCount} total={employees.length} tone="red" />
-        <StatCard icon={CheckCircle2} label={t("today.onTime")} value={onTimeCount} total={employees.length} tone="primary" />
-        <StatCard icon={AlarmClock} label={t("today.late")} value={lateCount} total={employees.length} tone="amber" />
+        <StatCard icon={UserCheck} label={t("today.present")} value={presentCount} total={employees.length} tone="green" />
+        <StatCard icon={UserX} label={t("today.absent")} value={absentCount} total={employees.length} tone="pink" />
+        <StatCard icon={CheckCircle2} label={t("today.onTime")} value={onTimeCount} total={employees.length} tone="blue" />
+        <StatCard icon={AlarmClock} label={t("today.late")} value={lateCount} total={employees.length} tone="yellow" />
       </div>
 
-      <Card className="overflow-hidden py-0 gap-0">
-        <CardHeader className="flex-row items-center justify-between border-b py-3.5 gap-2">
-          <CardTitle className="text-sm font-semibold">{t("today.employees")}</CardTitle>
-          <span className="text-xs text-muted-foreground">{rows.length} {t("today.total")}</span>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="ps-5">{t("today.employee")}</TableHead>
-                <TableHead>{t("common.role")}</TableHead>
-                <TableHead>{t("today.expectedBy")}</TableHead>
-                <TableHead>{t("today.checkIn")}</TableHead>
-                <TableHead>{t("today.checkOut")}</TableHead>
-                <TableHead className="pe-5">{t("common.status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.employee.id}>
-                  <TableCell className="ps-5">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0 ${
-                          r.firstCheckIn ? "bg-primary" : "bg-muted-foreground/40"
-                        }`}
-                      >
-                        {initials(r.employee.name)}
-                      </div>
-                      <div>
-                        <div className="font-medium">{r.employee.name}</div>
-                        <div className="text-xs text-muted-foreground">{r.employee.id}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-foreground/80 capitalize">
-                    {(r.employee.role ?? "—").toString().replace("_", " ")}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-mono text-xs">
-                    {r.employee.reportingMorning ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-foreground/80 font-mono">
-                    {r.firstCheckIn ? fmtTime(r.firstCheckIn) : "—"}
-                  </TableCell>
-                  <TableCell className="text-foreground/80 font-mono">
-                    {r.lastCheckOut ? fmtTime(r.lastCheckOut) : "—"}
-                  </TableCell>
-                  <TableCell className="pe-5">{statusBadge(r)}</TableCell>
-                </TableRow>
-              ))}
-              {rows.length === 0 && (
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 lg:gap-6 items-start">
+        <Card className="p-5">
+          <CardTitle className="text-sm font-semibold mb-1">{t("today.overview")}</CardTitle>
+          <p className="text-xs text-muted-foreground mb-4">{todayLabel}</p>
+          <AttendanceRing onTime={onTimeCount} late={lateCount} absent={absentCount} total={rows.length} />
+        </Card>
+
+        <Card className="overflow-hidden py-0 gap-0">
+          <CardHeader className="flex-row items-center justify-between border-b py-3.5 gap-2">
+            <CardTitle className="text-sm font-semibold">{t("today.employees")}</CardTitle>
+            <span className="text-xs text-muted-foreground">{rows.length} {t("today.total")}</span>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                    {t("today.noEmployees")}
-                  </TableCell>
+                  <TableHead className="ps-5">{t("today.employee")}</TableHead>
+                  <TableHead>{t("common.role")}</TableHead>
+                  <TableHead>{t("today.expectedBy")}</TableHead>
+                  <TableHead>{t("today.checkIn")}</TableHead>
+                  <TableHead>{t("today.checkOut")}</TableHead>
+                  <TableHead className="pe-5">{t("common.status")}</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.employee.id}>
+                    <TableCell className="ps-5">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0 ${
+                            r.firstCheckIn ? "bg-primary" : "bg-muted-foreground/40"
+                          }`}
+                        >
+                          {initials(r.employee.name)}
+                        </div>
+                        <div>
+                          <div className="font-medium">{r.employee.name}</div>
+                          <div className="text-xs text-muted-foreground">{r.employee.id}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-foreground/80 capitalize">
+                      {(r.employee.role ?? "—").toString().replace("_", " ")}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground font-mono text-xs">
+                      {r.employee.reportingMorning ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-foreground/80 font-mono">
+                      {r.firstCheckIn ? fmtTime(r.firstCheckIn) : "—"}
+                    </TableCell>
+                    <TableCell className="text-foreground/80 font-mono">
+                      {r.lastCheckOut ? fmtTime(r.lastCheckOut) : "—"}
+                    </TableCell>
+                    <TableCell className="pe-5">{statusBadge(r)}</TableCell>
+                  </TableRow>
+                ))}
+                {rows.length === 0 && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                      {t("today.noEmployees")}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -188,27 +197,25 @@ function StatCard({
   label: string;
   value: number;
   total: number;
-  tone: "emerald" | "red" | "primary" | "amber";
+  tone: "green" | "pink" | "blue" | "yellow";
 }) {
   const toneMap = {
-    emerald: "bg-emerald-500/10 text-emerald-500",
-    red: "bg-red-500/10 text-red-500",
-    primary: "bg-primary/10 text-primary",
-    amber: "bg-amber-500/10 text-amber-500",
+    green: "bg-block-green text-block-green-foreground",
+    pink: "bg-block-pink text-block-pink-foreground",
+    blue: "bg-block-blue text-block-blue-foreground",
+    yellow: "bg-block-yellow text-block-yellow-foreground",
   };
   return (
-    <Card className="p-4 gap-0">
-      <div className="flex items-center gap-3">
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${toneMap[tone]}`}>
-          <Icon className="w-4.5 h-4.5" />
+    <Card className={`p-4 gap-0 border-transparent shadow-none ${toneMap[tone]}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold opacity-80 truncate">{label}</span>
+        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+          <Icon className="w-4 h-4" strokeWidth={2.25} />
         </div>
-        <div className="min-w-0">
-          <div className="text-xs text-muted-foreground truncate">{label}</div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-xl lg:text-2xl font-semibold tabular-nums">{value}</span>
-            <span className="text-xs text-muted-foreground">/ {total}</span>
-          </div>
-        </div>
+      </div>
+      <div className="flex items-baseline gap-1 mt-3">
+        <span className="text-2xl lg:text-3xl font-bold tabular-nums">{value}</span>
+        <span className="text-xs font-medium opacity-70">/ {total}</span>
       </div>
     </Card>
   );

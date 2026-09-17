@@ -6,7 +6,7 @@ export default function ReminderBanner({ reminder, onDismiss }: { reminder: Remi
   const { t } = useLocale();
   return (
     <div
-      className="fixed top-0 start-0 end-0 z-50 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 shadow-2xl flex items-center justify-between gap-4"
+      className="fixed top-0 start-0 end-0 z-50 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 shadow-floating flex items-center justify-between gap-4"
       style={{ animation: "slideDown 0.4s ease-out, pulseGlow 1.5s ease-in-out infinite alternate" }}
     >
       <div className="flex items-center gap-3">
