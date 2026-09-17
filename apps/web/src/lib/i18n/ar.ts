@@ -277,6 +277,8 @@ const ar: typeof en = {
     grade: "التقدير",
 
     summaryTitle: "ملخص الحضور اليومي",
+    summaryBadge: "ملخص الحضور",
+    employeesLabel: "موظف",
     records: "سجل",
     colDate: "التاريخ",
     colFirstCheckIn: "أول تسجيل دخول",

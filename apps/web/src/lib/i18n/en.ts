@@ -272,6 +272,8 @@ const en = {
     grade: "Grade",
 
     summaryTitle: "Daily Attendance Summary",
+    summaryBadge: "Attendance Summary",
+    employeesLabel: "Employees",
     records: "record(s)",
     colDate: "Date",
     colFirstCheckIn: "First Check-In",

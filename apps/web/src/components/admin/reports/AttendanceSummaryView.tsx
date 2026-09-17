@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { CalendarDays } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -10,31 +12,94 @@ interface Props {
   loading: boolean;
 }
 
+// Alternates two color themes across successive date groups, purely so
+// consecutive days are easy to tell apart at a glance when scanning down
+// the page — the color itself carries no status meaning.
+const THEMES = [
+  { header: "bg-blue-600", headerText: "text-white", badge: "bg-white/15 text-white", thead: "bg-blue-700" },
+  { header: "bg-emerald-700", headerText: "text-white", badge: "bg-white/15 text-white", thead: "bg-emerald-800" },
+];
+
 export default function AttendanceSummaryView({ summary, loading }: Props) {
+  const { t } = useLocale();
+
+  // `summary` already sorts newest-date-first, then by employee name —
+  // grouping just needs to walk it once and split on date changes.
+  const groups = useMemo(() => {
+    const list: { date: string; dateObj: Date; rows: DaySummary[] }[] = [];
+    for (const s of summary) {
+      const last = list[list.length - 1];
+      if (last && last.date === s.date) {
+        last.rows.push(s);
+      } else {
+        list.push({ date: s.date, dateObj: s.dateObj, rows: [s] });
+      }
+    }
+    return list;
+  }, [summary]);
+
+  if (!loading && groups.length === 0) {
+    return (
+      <Card>
+        <CardContent className="text-center py-12 text-muted-foreground">{t("reports.noRecordsFiltered")}</CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {groups.map((group, i) => (
+        <DateGroupCard key={group.date} dateObj={group.dateObj} rows={group.rows} theme={THEMES[i % THEMES.length]} />
+      ))}
+    </div>
+  );
+}
+
+function DateGroupCard({
+  dateObj,
+  rows,
+  theme,
+}: {
+  dateObj: Date;
+  rows: DaySummary[];
+  theme: (typeof THEMES)[number];
+}) {
   const { t } = useLocale();
   return (
     <Card className="overflow-hidden py-0 gap-0">
-      <CardHeader className="border-b py-3.5">
-        <div className="font-semibold text-sm">{t("reports.summaryTitle")}</div>
-        <p className="text-xs text-muted-foreground mt-0.5">{summary.length} {t("reports.records")}</p>
+      <CardHeader className={`flex-row items-center justify-between gap-3 py-3.5 ${theme.header}`}>
+        <div className={`flex items-center gap-2.5 ${theme.headerText}`}>
+          <CalendarDays className="w-5 h-5 shrink-0" />
+          <span className="font-semibold">{formatDate(dateObj)}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge variant="outline" className={`border-transparent ${theme.badge}`}>
+            {t("reports.summaryBadge")}
+          </Badge>
+          <span className={`text-sm font-medium ${theme.headerText}`}>
+            {rows.length} {t("reports.employeesLabel")}
+          </span>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="ps-5">{t("reports.colDate")}</TableHead>
-              <TableHead>{t("reports.colEmployee")}</TableHead>
-              <TableHead>{t("reports.colFirstCheckIn")}</TableHead>
-              <TableHead>{t("reports.colLastCheckOut")}</TableHead>
-              <TableHead>{t("reports.colHours")}</TableHead>
-              <TableHead>{t("reports.colLate")}</TableHead>
-              <TableHead className="pe-5">{t("common.status")}</TableHead>
+            <TableRow className={`hover:bg-transparent ${theme.thead}`}>
+              <TableHead className="ps-5 text-white/90">#</TableHead>
+              <TableHead className="text-white/90">{t("reports.colDate")}</TableHead>
+              <TableHead className="text-white/90">{t("reports.colEmployee")}</TableHead>
+              <TableHead className="text-white/90">{t("reports.colFirstCheckIn")}</TableHead>
+              <TableHead className="text-white/90">{t("reports.colLastCheckOut")}</TableHead>
+              <TableHead className="text-white/90">{t("reports.colHours")}</TableHead>
+              <TableHead className="text-white/90">{t("reports.colLate")}</TableHead>
+              <TableHead className="pe-5 text-white/90">{t("common.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {summary.map((s, i) => (
-              <TableRow key={i} className={s.hasAnomaly ? "bg-amber-500/5" : ""}>
-                <TableCell className="ps-5 font-medium">{formatDate(s.dateObj)}</TableCell>
+            {rows.map((s, i) => (
+              <TableRow key={`${s.date}_${s.employeeId}`} className={s.hasAnomaly ? "bg-amber-500/5" : ""}>
+                <TableCell className="ps-5 text-muted-foreground">{i + 1}</TableCell>
+                <TableCell className="font-medium">{formatDate(s.dateObj)}</TableCell>
                 <TableCell>
                   <div className="font-medium">{s.employeeName}</div>
                   <div className="text-xs text-muted-foreground">{s.employeeId}</div>
@@ -66,13 +131,6 @@ export default function AttendanceSummaryView({ summary, loading }: Props) {
                 </TableCell>
               </TableRow>
             ))}
-            {summary.length === 0 && !loading && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  {t("reports.noRecordsFiltered")}
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
       </CardContent>

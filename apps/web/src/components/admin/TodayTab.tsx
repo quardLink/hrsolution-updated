@@ -42,7 +42,7 @@ export default function TodayTab({ logs, employees }: Props) {
   const today = getDateKey(new Date());
 
   const rows: TodayRow[] = useMemo(() => {
-    return employees.map((emp) => {
+    const built = employees.map((emp) => {
       let firstCheckIn: Date | null = null;
       let lastCheckOut: Date | null = null;
       for (const log of logs) {
@@ -59,6 +59,20 @@ export default function TodayTab({ logs, employees }: Props) {
         ? minutesLate(firstCheckIn, emp.reportingMorning)
         : 0;
       return { employee: emp, firstCheckIn, lastCheckOut, late };
+    });
+
+    // Whoever punched most recently (a check-out counts as more recent
+    // than that same person's check-in) floats to the top, so the front
+    // desk can see at a glance who just walked in or out. Employees with
+    // no activity yet today have nothing to rank by, so they sink to the
+    // bottom, alphabetically among themselves.
+    return built.sort((a, b) => {
+      const aLast = a.lastCheckOut ?? a.firstCheckIn;
+      const bLast = b.lastCheckOut ?? b.firstCheckIn;
+      if (aLast && bLast) return bLast.getTime() - aLast.getTime();
+      if (aLast) return -1;
+      if (bLast) return 1;
+      return a.employee.name.localeCompare(b.employee.name);
     });
   }, [logs, employees, today]);
 
