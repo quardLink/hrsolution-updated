@@ -132,7 +132,7 @@ export default function EmployeeFormModal({ editing, roles, onClose, onSave }: P
             <Input
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={9}
+              maxLength={10}
               value={form.biometricPin ?? ""}
               onChange={(e) => setForm({ ...form, biometricPin: e.target.value.replace(/\D/g, "") || null })}
               placeholder={t("employees.biometricPinPlaceholder")}
