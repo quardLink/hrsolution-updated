@@ -9,6 +9,13 @@ export interface OfficeSettings {
   lunchBreakEnd: string;
   companyName: string;
   lateThresholdMinutes: string;
+  // Payroll-specific — a separate company-wide shift/break used only for
+  // pay calculation, distinct from the default* fields above (those drive
+  // the kiosk's late-arrival messages instead).
+  payrollShiftStart: string;
+  payrollShiftEnd: string;
+  payrollBreakStart: string;
+  payrollBreakEnd: string;
 }
 
 // Shared by the General and Working Hours settings panels — both just edit

@@ -158,15 +158,26 @@ export function exportAttendanceReportPdf({
   doc.save(`Attendance_Report_${fileDate}.pdf`);
 }
 
+function formatBreaks(s: DaySummary): string {
+  if (s.breaks.length === 0) return "—";
+  return s.breaks
+    .map((b) => {
+      const minutes = Math.round((b.end.getTime() - b.start.getTime()) / 60000);
+      return `${formatTime(b.start)}–${formatTime(b.end)} (${minutes}m)`;
+    })
+    .join("; ");
+}
+
 function drawDailyLogTable(doc: jsPDF, summary: DaySummary[], margin: number, startY: number): void {
   autoTable(doc, {
     startY,
-    head: [["Date", "Employee", "First In", "Last Out", "Hours", "Late", "Status"]],
+    head: [["Date", "Employee", "First In", "Last Out", "Break", "Hours", "Late", "Status"]],
     body: summary.map((s) => [
       formatDate(s.dateObj),
       s.employeeName,
       s.firstCheckIn ? formatTime(s.firstCheckIn) : "—",
       s.lastCheckOut ? formatTime(s.lastCheckOut) : "—",
+      formatBreaks(s),
       s.totalHours > 0 ? s.totalHours.toFixed(1) : "—",
       s.minutesLate > 0 ? `${s.minutesLate}m` : "—",
       s.hasAnomaly ? s.anomalyReason : "Complete",
@@ -176,7 +187,7 @@ function drawDailyLogTable(doc: jsPDF, summary: DaySummary[], margin: number, st
     styles: { fontSize: 8, cellPadding: 4 },
     margin: { left: margin, right: margin },
     didParseCell: (data) => {
-      if (data.section === "body" && data.column.index === 6) {
+      if (data.section === "body" && data.column.index === 7) {
         if (data.cell.raw !== "Complete") {
           data.cell.styles.textColor = [180, 83, 9];
           data.cell.styles.fontStyle = "bold";

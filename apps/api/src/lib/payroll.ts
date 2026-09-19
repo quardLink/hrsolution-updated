@@ -2,12 +2,13 @@
 // formulas are easy to audit and change in exactly one place.
 //
 // Company policy: ONE continuous shift (company-wide, e.g. 09:00–18:00, set
-// via Settings → payrollShiftStart/payrollShiftEnd) with a FLOATING break
-// (payrollBreakMinutes) employees can take any time during the day — not a
-// fixed break window tied to specific clock times, and not a per-employee
-// custom schedule. Worked minutes = (checkout − checkin) − breakMinutes.
-// Every day (including the weekly off day) is treated identically: OT is
-// simply any time outside [shiftStart, shiftEnd].
+// via Settings → payrollShiftStart/payrollShiftEnd) with an assumed break
+// window (payrollBreakStart/payrollBreakEnd, e.g. 12:00–13:00) employees
+// can take any time during the day — not a fixed window enforced against
+// actual punches, just the fallback deduction used when no real mid-day
+// checkout/checkin was punched (see dayWorkedMinutes). Every day (including
+// the weekly off day) is treated identically: OT is simply any time
+// outside [shiftStart, shiftEnd].
 
 import type { AttendanceLogRow } from "./attendanceLogs";
 import type { Employee } from "./employees";
@@ -16,7 +17,8 @@ import type { LeaveRequest } from "./leaveRequests";
 export interface PayrollShiftConfig {
   shiftStart: string;
   shiftEnd: string;
-  breakMinutes: number;
+  breakStart: string;
+  breakEnd: string;
 }
 
 // Leave types that are FULLY PAID (no salary deduction).
@@ -85,54 +87,94 @@ export function getRates(monthlySalary: number, year: number, month: number) {
   return { daysInMonth: days, dailyRate, hourlyRate };
 }
 
+// One checkin-to-checkout punch pair. A day with a mid-day break punched
+// out and back in produces two of these (pre-break, post-break) instead
+// of one spanning the whole day.
+export interface DaySegment {
+  checkIn: Date;
+  checkOut: Date | null;
+}
+
+export interface DailyAttendance {
+  date: string;
+  checkIn: Date; // first checkin of the day — unchanged meaning, used for OT/display
+  checkOut: Date | null; // last checkout of the day — null if still clocked in
+  segments: DaySegment[];
+}
+
 /**
- * Groups an employee's raw log rows into one entry per calendar day, picking
- * the FIRST "checkin" event and the LAST "checkout" event of that day
- * (guards against duplicate taps without losing real check-in/out times).
- * Grouped by date + action only — the Session column (morning/afternoon_out/
- * afternoon_in/evening) is ignored, since check-in/check-out can happen at
- * any time under the single-shift policy.
+ * Groups an employee's raw log rows into one entry per calendar day,
+ * replaying them in chronological order into checkin→checkout segments:
+ * a checkin opens a segment, the next checkout closes it, and a further
+ * checkin opens a new one — which is exactly what a mid-day break (punch
+ * out, punch back in) produces. Duplicate taps of the same action are
+ * coalesced (an already-open segment ignores another checkin; a stray
+ * checkout with nothing open is ignored). Grouped by date only — the
+ * Session column (morning/afternoon_out/afternoon_in/evening) is ignored,
+ * since check-in/check-out can happen at any time under the single-shift
+ * policy.
  */
-export function pairDailySessions(
-  logs: AttendanceLogRow[],
-  employeeId: string,
-): { date: string; checkIn: Date; checkOut: Date | null }[] {
-  const byDay = new Map<string, { checkIn: Date | null; checkOut: Date | null }>();
+export function pairDailySessions(logs: AttendanceLogRow[], employeeId: string): DailyAttendance[] {
+  const byDay = new Map<string, { action: string; timestamp: Date }[]>();
 
   for (const row of logs) {
     if (row.employeeId !== employeeId) continue;
     const t = parseLogTimestamp(row.timestamp);
     if (!t) continue;
     const key = dateKey(t);
-    const entry = byDay.get(key) ?? { checkIn: null, checkOut: null };
-
-    if (row.action === "checkin") {
-      if (!entry.checkIn || t < entry.checkIn) entry.checkIn = t;
-    } else if (row.action === "checkout") {
-      if (!entry.checkOut || t > entry.checkOut) entry.checkOut = t;
-    }
-    byDay.set(key, entry);
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key)!.push({ action: row.action, timestamp: t });
   }
 
-  const result: { date: string; checkIn: Date; checkOut: Date | null }[] = [];
-  for (const [date, entry] of byDay) {
-    if (entry.checkIn) result.push({ date, checkIn: entry.checkIn, checkOut: entry.checkOut });
+  const result: DailyAttendance[] = [];
+  for (const [date, rows] of byDay) {
+    rows.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    const segments: DaySegment[] = [];
+    let openCheckIn: Date | null = null;
+    for (const row of rows) {
+      if (row.action === "checkin") {
+        if (openCheckIn === null) openCheckIn = row.timestamp;
+      } else if (row.action === "checkout" && openCheckIn !== null) {
+        segments.push({ checkIn: openCheckIn, checkOut: row.timestamp });
+        openCheckIn = null;
+      }
+    }
+    if (openCheckIn !== null) segments.push({ checkIn: openCheckIn, checkOut: null });
+
+    if (segments.length === 0) continue; // stray checkout(s) with no checkin that day
+    result.push({
+      date,
+      checkIn: segments[0].checkIn,
+      checkOut: segments[segments.length - 1].checkOut,
+      segments,
+    });
   }
   return result;
 }
 
 /**
- * Worked minutes for one day: raw check-in-to-check-out span minus a flat
- * floating break, clamped so it can never go negative.
+ * Worked minutes for one day: the sum of every completed checkin→checkout
+ * segment. A single segment (no real mid-day break punched) falls back to
+ * subtracting the flat assumed break, preserving the existing behavior for
+ * employees who don't punch out for breaks; two or more segments means a
+ * real break was recorded, so the gap between them is already excluded and
+ * the flat assumption is skipped to avoid double-subtracting it.
  */
-export function dayWorkedMinutes(
-  checkIn: Date,
-  checkOut: Date | null,
-  breakMinutes: number,
-): number {
-  if (!checkOut) return 0; // no checkout yet — don't count in-progress time
-  const rawMinutes = Math.max(0, (checkOut.getTime() - checkIn.getTime()) / 60000);
-  return Math.max(0, rawMinutes - breakMinutes);
+export function dayWorkedMinutes(day: DailyAttendance, shift: PayrollShiftConfig): number {
+  const closedSegments = day.segments.filter((s): s is { checkIn: Date; checkOut: Date } => s.checkOut !== null);
+  if (closedSegments.length === 0) return 0; // never checked out — don't count in-progress time
+
+  const segmentMinutes = closedSegments.reduce(
+    (sum, s) => sum + Math.max(0, (s.checkOut.getTime() - s.checkIn.getTime()) / 60000),
+    0,
+  );
+
+  if (day.segments.length <= 1) {
+    const assumedBreakMinutes = Math.max(0, timeStringToMinutes(shift.breakEnd) - timeStringToMinutes(shift.breakStart));
+    return Math.max(0, segmentMinutes - assumedBreakMinutes);
+  }
+  return segmentMinutes;
 }
 
 /**
@@ -203,7 +245,7 @@ export function calculateMonthlyPayroll({
   let totalOtMinutes = 0;
 
   for (const d of days) {
-    totalWorkedMinutes += dayWorkedMinutes(d.checkIn, d.checkOut, shift.breakMinutes);
+    totalWorkedMinutes += dayWorkedMinutes(d, shift);
     totalOtMinutes += dayOtMinutes(d.checkIn, d.checkOut, shift);
   }
 
@@ -314,7 +356,7 @@ export function calculateDailyPayroll({
 
   const day = pairDailySessions(logs, employee.id).find((d) => d.date === date) ?? null;
 
-  const workedMinutes = day ? dayWorkedMinutes(day.checkIn, day.checkOut, shift.breakMinutes) : 0;
+  const workedMinutes = day ? dayWorkedMinutes(day, shift) : 0;
   const otMinutes = day ? dayOtMinutes(day.checkIn, day.checkOut, shift) : 0;
   const otHours = otMinutes / 60;
   const otPay = otHours * hourlyRate;

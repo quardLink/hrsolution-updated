@@ -14,7 +14,8 @@ export interface OfficeSettings {
   // kiosk's late-arrival messages, a different concern).
   payrollShiftStart: string;
   payrollShiftEnd: string;
-  payrollBreakMinutes: string;
+  payrollBreakStart: string;
+  payrollBreakEnd: string;
 }
 
 function toSettings(row: typeof schema.orgSettings.$inferSelect): OfficeSettings {
@@ -28,7 +29,8 @@ function toSettings(row: typeof schema.orgSettings.$inferSelect): OfficeSettings
     weeklyOffDay: row.weeklyOffDay,
     payrollShiftStart: row.payrollShiftStart,
     payrollShiftEnd: row.payrollShiftEnd,
-    payrollBreakMinutes: row.payrollBreakMinutes,
+    payrollBreakStart: row.payrollBreakStart,
+    payrollBreakEnd: row.payrollBreakEnd,
   };
 }
 

@@ -367,7 +367,8 @@ router.get("/admin/payroll/:employeeId", async (req, res): Promise<void> => {
       shift: {
         shiftStart: settings.payrollShiftStart,
         shiftEnd: settings.payrollShiftEnd,
-        breakMinutes: Number(settings.payrollBreakMinutes) || 0,
+        breakStart: settings.payrollBreakStart,
+        breakEnd: settings.payrollBreakEnd,
       },
     });
 
@@ -398,7 +399,8 @@ router.get("/admin/payroll-summary", async (req, res): Promise<void> => {
     const shift = {
       shiftStart: settings.payrollShiftStart,
       shiftEnd: settings.payrollShiftEnd,
-      breakMinutes: Number(settings.payrollBreakMinutes) || 0,
+      breakStart: settings.payrollBreakStart,
+      breakEnd: settings.payrollBreakEnd,
     };
 
     const results = employees

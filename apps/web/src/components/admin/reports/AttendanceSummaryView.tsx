@@ -92,6 +92,7 @@ function DateGroupCard({
               <TableHead>{t("reports.colEmployee")}</TableHead>
               <TableHead>{t("reports.colFirstCheckIn")}</TableHead>
               <TableHead>{t("reports.colLastCheckOut")}</TableHead>
+              <TableHead>{t("reports.colBreak")}</TableHead>
               <TableHead>{t("reports.colHours")}</TableHead>
               <TableHead>{t("reports.colLate")}</TableHead>
               <TableHead className="pe-5">{t("common.status")}</TableHead>
@@ -111,6 +112,23 @@ function DateGroupCard({
                 </TableCell>
                 <TableCell className="text-foreground/80">
                   {s.lastCheckOut ? formatTime(s.lastCheckOut) : <span className="text-red-500 font-medium">{t("reports.missing")}</span>}
+                </TableCell>
+                <TableCell className="text-foreground/80">
+                  {s.breaks.length === 0 ? (
+                    <span className="text-muted-foreground">—</span>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {s.breaks.map((b, bi) => {
+                        const minutes = Math.round((b.end.getTime() - b.start.getTime()) / 60000);
+                        return (
+                          <div key={bi} className="text-xs whitespace-nowrap">
+                            {formatTime(b.start)}–{formatTime(b.end)}{" "}
+                            <span className="text-muted-foreground">({minutes}m)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="text-foreground/80">
                   {s.totalHours > 0 ? `${s.totalHours.toFixed(1)} h` : <span className="text-muted-foreground">—</span>}

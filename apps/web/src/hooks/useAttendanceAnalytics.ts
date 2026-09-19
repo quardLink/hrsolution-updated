@@ -8,6 +8,13 @@ import {
 } from "../lib/attendance";
 import type { Employee, LogEntry } from "./useAdminAuth";
 
+// A gap between two punch segments on the same day — i.e. a real mid-day
+// checkout followed by a checkin, most commonly a lunch/rest break.
+export interface BreakInterval {
+  start: Date;
+  end: Date;
+}
+
 export interface DaySummary {
   date: string;
   dateObj: Date;
@@ -15,6 +22,7 @@ export interface DaySummary {
   employeeName: string;
   firstCheckIn: Date | null;
   lastCheckOut: Date | null;
+  breaks: BreakInterval[];
   checkIns: number;
   checkOuts: number;
   totalHours: number;
@@ -78,64 +86,117 @@ export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) 
   }, [logs, filterEmployee, filterFromDate, filterToDate]);
 
   const summary: DaySummary[] = useMemo(() => {
-    const map = new Map<string, DaySummary>();
+    // Group raw punches by (date, employee) first — they need to be
+    // replayed in chronological order to detect breaks, and log entries
+    // aren't guaranteed to arrive already sorted.
+    const grouped = new Map<
+      string,
+      { employeeId: string; employeeName: string; date: string; dateObj: Date; punches: { action: string; timestamp: Date }[] }
+    >();
     for (const log of filteredLogs) {
       const d = parseTimestamp(log.timestamp);
       if (!d) continue;
-      const dateKey = getDateKey(d);
-      const key = `${dateKey}_${log.employeeId}`;
-      if (!map.has(key)) {
-        map.set(key, {
-          date: dateKey,
-          dateObj: d,
+      const dateKeyStr = getDateKey(d);
+      const key = `${dateKeyStr}_${log.employeeId}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
           employeeId: log.employeeId,
           employeeName: log.employeeName,
-          firstCheckIn: null,
-          lastCheckOut: null,
-          checkIns: 0,
-          checkOuts: 0,
-          totalHours: 0,
-          hasAnomaly: false,
-          anomalyReason: "",
-          minutesLate: 0,
-          punctualityScore: 0,
+          date: dateKeyStr,
+          dateObj: d,
+          punches: [],
         });
       }
-      const entry = map.get(key)!;
-      if (log.action === "checkin") {
-        entry.checkIns++;
-        if (!entry.firstCheckIn || d < entry.firstCheckIn) entry.firstCheckIn = d;
-      } else if (log.action === "checkout") {
-        entry.checkOuts++;
-        if (!entry.lastCheckOut || d > entry.lastCheckOut) entry.lastCheckOut = d;
-      }
+      grouped.get(key)!.punches.push({ action: log.action, timestamp: d });
     }
-    for (const e of map.values()) {
-      if (e.firstCheckIn && e.lastCheckOut) {
-        e.totalHours = (e.lastCheckOut.getTime() - e.firstCheckIn.getTime()) / (1000 * 60 * 60);
-      }
-      if (e.checkIns > 0 && e.checkOuts === 0) {
-        e.hasAnomaly = true;
-        e.anomalyReason = "Missing check-out";
-      } else if (e.checkOuts > 0 && e.checkIns === 0) {
-        e.hasAnomaly = true;
-        e.anomalyReason = "Missing check-in";
-      } else if (e.checkIns !== e.checkOuts) {
-        e.hasAnomaly = true;
-        e.anomalyReason = `${e.checkIns} check-ins, ${e.checkOuts} check-outs`;
-      }
-      if (e.firstCheckIn) {
-        const emp = employeeMap.get(e.employeeId);
-        const expected = emp?.reportingMorning;
-        if (expected && expected !== "00:00") {
-          e.minutesLate = minutesLate(e.firstCheckIn, expected);
-          e.punctualityScore = scoreFromMinutesLate(e.minutesLate);
-        } else {
-          e.punctualityScore = 100;
+
+    const result: DaySummary[] = [];
+    for (const g of grouped.values()) {
+      const sorted = [...g.punches].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+      // Replay into checkin→checkout segments: a checkin opens one, the
+      // next checkout closes it, and a further checkin opens a new one —
+      // which is exactly what a mid-day break (punch out, punch back in)
+      // produces. The gap between two segments is the break itself.
+      const segments: { checkIn: Date; checkOut: Date | null }[] = [];
+      let openCheckIn: Date | null = null;
+      let checkIns = 0;
+      let checkOuts = 0;
+      for (const p of sorted) {
+        if (p.action === "checkin") {
+          checkIns++;
+          if (openCheckIn === null) openCheckIn = p.timestamp;
+        } else if (p.action === "checkout") {
+          checkOuts++;
+          if (openCheckIn !== null) {
+            segments.push({ checkIn: openCheckIn, checkOut: p.timestamp });
+            openCheckIn = null;
+          }
         }
       }
+      if (openCheckIn !== null) segments.push({ checkIn: openCheckIn, checkOut: null });
+
+      const firstCheckIn = segments[0]?.checkIn ?? null;
+      const lastCheckOut = segments[segments.length - 1]?.checkOut ?? null;
+
+      const breaks: BreakInterval[] = [];
+      for (let i = 0; i < segments.length - 1; i++) {
+        const end = segments[i].checkOut;
+        if (end) breaks.push({ start: end, end: segments[i + 1].checkIn });
+      }
+
+      // Sum of actually-worked (closed) segments — for a break day this
+      // naturally excludes the break itself, unlike a plain first-to-last
+      // span. Single-segment days are unaffected (no policy assumption
+      // like payroll's flat break minutes is applied here; this column is
+      // "what was actually clocked", not "what gets paid").
+      const totalHours = segments.reduce(
+        (sum, s) => (s.checkOut ? sum + (s.checkOut.getTime() - s.checkIn.getTime()) / 3600000 : sum),
+        0,
+      );
+
+      const entry: DaySummary = {
+        date: g.date,
+        dateObj: g.dateObj,
+        employeeId: g.employeeId,
+        employeeName: g.employeeName,
+        firstCheckIn,
+        lastCheckOut,
+        breaks,
+        checkIns,
+        checkOuts,
+        totalHours,
+        hasAnomaly: false,
+        anomalyReason: "",
+        minutesLate: 0,
+        punctualityScore: 0,
+      };
+
+      if (entry.checkIns > 0 && entry.checkOuts === 0) {
+        entry.hasAnomaly = true;
+        entry.anomalyReason = "Missing check-out";
+      } else if (entry.checkOuts > 0 && entry.checkIns === 0) {
+        entry.hasAnomaly = true;
+        entry.anomalyReason = "Missing check-in";
+      } else if (entry.checkIns !== entry.checkOuts) {
+        entry.hasAnomaly = true;
+        entry.anomalyReason = `${entry.checkIns} check-ins, ${entry.checkOuts} check-outs`;
+      }
+      if (entry.firstCheckIn) {
+        const emp = employeeMap.get(entry.employeeId);
+        const expected = emp?.reportingMorning;
+        if (expected && expected !== "00:00") {
+          entry.minutesLate = minutesLate(entry.firstCheckIn, expected);
+          entry.punctualityScore = scoreFromMinutesLate(entry.minutesLate);
+        } else {
+          entry.punctualityScore = 100;
+        }
+      }
+
+      result.push(entry);
     }
-    return Array.from(map.values()).sort((a, b) => {
+
+    return result.sort((a, b) => {
       const dateCmp = b.date.localeCompare(a.date);
       if (dateCmp !== 0) return dateCmp;
       return a.employeeName.localeCompare(b.employeeName);

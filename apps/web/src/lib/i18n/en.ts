@@ -129,6 +129,16 @@ const en = {
     reminder: "Evening Check-Out Reminder",
     reminderHint: "Sound reminder plays at this time on the kiosk.",
 
+    payrollShiftTitle: "Payroll Shift & Break",
+    payrollShiftSubtitle:
+      "The company-wide shift used for pay calculation — separate from the kiosk hours above. Overtime is any time outside this shift.",
+    payrollShiftStart: "Shift Start",
+    payrollShiftEnd: "Shift End",
+    payrollBreakStart: "Break Start",
+    payrollBreakEnd: "Break End",
+    payrollBreakHint:
+      "Used only on days with no real break punch (no mid-day check-out/check-in) — it's subtracted from worked hours as an assumed break. A day with an actual punched break uses the real times instead and ignores this.",
+
     rolesTitle: "Roles",
     rolesSubtitle: "Manage the list of job titles that appear when adding or editing employees.",
     rolesNone: "No roles defined.",
@@ -289,6 +299,7 @@ const en = {
     colDate: "Date",
     colFirstCheckIn: "First Check-In",
     colLastCheckOut: "Last Check-Out",
+    colBreak: "Break",
     colHours: "Hours",
     colLate: "Late",
     missing: "Missing",

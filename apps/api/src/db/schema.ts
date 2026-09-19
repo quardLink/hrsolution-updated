@@ -86,7 +86,11 @@ export const orgSettings = pgTable("org_settings", {
   weeklyOffDay: text("weekly_off_day").notNull().default("Friday"),
   payrollShiftStart: text("payroll_shift_start").notNull().default("09:00"),
   payrollShiftEnd: text("payroll_shift_end").notNull().default("18:00"),
-  payrollBreakMinutes: text("payroll_break_minutes").notNull().default("60"),
+  // Expected break window, e.g. 12:00–13:00 — used as the fallback break
+  // deduction on days with no real punched break (see payroll.ts). Set
+  // breakEnd equal to breakStart to effectively disable the assumption.
+  payrollBreakStart: text("payroll_break_start").notNull().default("12:00"),
+  payrollBreakEnd: text("payroll_break_end").notNull().default("13:00"),
 });
 
 export const leaveRequests = pgTable("leave_requests", {

@@ -29,7 +29,8 @@ export async function runDailyPayrollJob(orgId: string, dateOverride?: string): 
     const shift: PayrollShiftConfig = {
       shiftStart: settings.payrollShiftStart,
       shiftEnd: settings.payrollShiftEnd,
-      breakMinutes: Number(settings.payrollBreakMinutes) || 0,
+      breakStart: settings.payrollBreakStart,
+      breakEnd: settings.payrollBreakEnd,
     };
 
     const activeEmployees = employees.filter((e) => e.active);
