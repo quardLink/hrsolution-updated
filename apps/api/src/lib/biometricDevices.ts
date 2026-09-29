@@ -8,6 +8,9 @@ export interface BiometricDevice {
   name: string;
   lastSeenIp: string | null;
   lastSeenAt: Date | null;
+  clockOffsetMs: number | null;
+  offsetCandidateMs: number | null;
+  offsetCandidateAt: Date | null;
   registeredAt: Date;
 }
 
@@ -19,6 +22,9 @@ function toDevice(row: typeof schema.biometricDevices.$inferSelect): BiometricDe
     name: row.name,
     lastSeenIp: row.lastSeenIp,
     lastSeenAt: row.lastSeenAt,
+    clockOffsetMs: row.clockOffsetMs,
+    offsetCandidateMs: row.offsetCandidateMs,
+    offsetCandidateAt: row.offsetCandidateAt,
     registeredAt: row.registeredAt,
   };
 }
@@ -65,6 +71,16 @@ export async function revokeBiometricDevice(orgId: string, id: string): Promise<
     .where(and(eq(schema.biometricDevices.id, id), eq(schema.biometricDevices.orgId, orgId)));
 }
 
+// The name is only ever set once, at registration — this is the only way
+// to change it afterward.
+export async function renameBiometricDevice(orgId: string, id: string, name: string): Promise<void> {
+  const db = getDb();
+  await db
+    .update(schema.biometricDevices)
+    .set({ name })
+    .where(and(eq(schema.biometricDevices.id, id), eq(schema.biometricDevices.orgId, orgId)));
+}
+
 // Looked up on every ADMS request the terminal makes — this is the only
 // thing that ties an inbound push to an org, so it excludes revoked rows.
 export async function findBiometricDeviceBySerial(serialNumber: string): Promise<BiometricDevice | null> {
@@ -81,4 +97,17 @@ export async function touchBiometricDeviceLastSeen(id: string, ip: string | unde
     .update(schema.biometricDevices)
     .set({ lastSeenAt: new Date(), ...(ip ? { lastSeenIp: ip } : {}) })
     .where(eq(schema.biometricDevices.id, id));
+}
+
+// Persists the calibration decision made in routes/zkteco.ts's ingestPunch
+// for this device — either a confirmed offset, a new one-punch candidate,
+// or clearing the candidate. Never combined with touchBiometricDeviceLastSeen
+// since only a punch (not a bare heartbeat) carries the device's own clock
+// reading to calibrate against.
+export async function updateDeviceClockOffset(
+  id: string,
+  update: { clockOffsetMs?: number; offsetCandidateMs?: number | null; offsetCandidateAt?: Date | null },
+): Promise<void> {
+  const db = getDb();
+  await db.update(schema.biometricDevices).set(update).where(eq(schema.biometricDevices.id, id));
 }

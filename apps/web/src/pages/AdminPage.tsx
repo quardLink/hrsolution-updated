@@ -4,6 +4,7 @@ import EmployeesTab from "../components/admin/EmployeesTab";
 import SettingsTab from "../components/admin/SettingsTab";
 import LeaveRequestsTab from "../components/admin/LeaveRequestsTab";
 import PayrollTab from "../components/admin/PayrollTab";
+import RemoteRequestsTab from "../components/admin/RemoteRequestsTab";
 import AdminShell, { type AdminView } from "../components/admin/AdminShell";
 import TodayTab from "../components/admin/TodayTab";
 import AdminLoginScreen from "../components/admin/AdminLoginScreen";
@@ -28,6 +29,7 @@ export default function AdminPage() {
     org,
     logs,
     employees,
+    attendanceSettings,
     loading,
     error,
     setError,
@@ -47,7 +49,7 @@ export default function AdminPage() {
     totalDaysInPeriod,
     rankings,
     stats,
-  } = useAttendanceAnalytics(logs, employees);
+  } = useAttendanceAnalytics(logs, employees, attendanceSettings);
 
   if (checkingSession) {
     return <div className="min-h-screen bg-background" />;
@@ -77,7 +79,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {view === "today" && <TodayTab logs={logs} employees={employees} />}
+        {view === "today" && <TodayTab logs={logs} employees={employees} onViewChange={setView} />}
 
         {isReportView && (
           <ReportSection view={view}>
@@ -104,13 +106,15 @@ export default function AdminPage() {
               <RankingsView rankings={rankings} totalDaysInPeriod={totalDaysInPeriod} />
             )}
 
-            {view === "summary" && <AttendanceSummaryView summary={summary} loading={loading} />}
+            {view === "summary" && <AttendanceSummaryView summary={summary} logs={logs} loading={loading} />}
           </ReportSection>
         )}
 
         {view === "employees" && <EmployeesTab />}
 
         {view === "leave" && <LeaveRequestsTab />}
+
+        {view === "remoteRequests" && <RemoteRequestsTab />}
 
         {view === "payroll" && <PayrollTab orgName={org?.name} />}
 

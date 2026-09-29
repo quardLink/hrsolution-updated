@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   jsonb,
   numeric,
@@ -58,6 +59,12 @@ export const employees = pgTable(
     // different from `code`, e.g. "EMP001"). Null means not enrolled on
     // any terminal yet — punches fall back to matching `code` directly.
     biometricPin: text("biometric_pin"),
+    // Only consulted when orgSettings.payrollMethod is "hybrid" — null
+    // means "inherit the company default". Switching the company method
+    // into Hybrid backfills every employee's row to a real value (see
+    // updateOfficeSettings in settings.ts), so a null here in Hybrid mode
+    // only ever happens for a brand-new employee who hasn't been set yet.
+    payrollMethod: text("payroll_method").$type<"hourly" | "daily" | null>(),
   },
   (t) => [primaryKey({ columns: [t.orgId, t.code] })],
 );
@@ -91,6 +98,49 @@ export const orgSettings = pgTable("org_settings", {
   // breakEnd equal to breakStart to effectively disable the assumption.
   payrollBreakStart: text("payroll_break_start").notNull().default("12:00"),
   payrollBreakEnd: text("payroll_break_end").notNull().default("13:00"),
+  // When on, a day's overtime only counts toward pay once HR approves it
+  // (see otApprovals below) — worked-but-unapproved OT still shows on
+  // Records, it just isn't paid until reviewed.
+  otApprovalRequired: boolean("ot_approval_required").notNull().default(true),
+
+  // Payroll calculation method — see payroll.ts's PayrollPolicy /
+  // calculatePayrollForEmployee. "hybrid" defers to each employee's own
+  // employees.payrollMethod field.
+  payrollMethod: text("payroll_method").$type<"hourly" | "daily" | "hybrid">().notNull().default("daily"),
+  payrollDailyRateBasis: text("payroll_daily_rate_basis").$type<"fixed_30" | "actual_days">().notNull().default("fixed_30"),
+  payrollStandardDailyHours: text("payroll_standard_daily_hours").notNull().default("8"),
+  payrollOtStartsAfterMinutes: text("payroll_ot_starts_after_minutes").notNull().default("30"),
+  // Applied to the hourly rate — 1.5 covers both "Article 107" and "1.5x
+  // basic" from the spec (see PayrollPolicy.otMultiplier for why those
+  // collapse to the same number here).
+  payrollOtMultiplier: text("payroll_ot_multiplier").notNull().default("1.5"),
+  payrollRoundingBlockMinutes: text("payroll_rounding_block_minutes").notNull().default("15"),
+  payrollFullDayMinHours: text("payroll_full_day_min_hours").notNull().default("7"),
+  payrollHalfDayMinHours: text("payroll_half_day_min_hours").notNull().default("4"),
+  payrollMaxLateMinutesBeforeHalfDay: text("payroll_max_late_minutes_before_half_day").notNull().default("60"),
+  payrollMissingCheckoutHandling: text("payroll_missing_checkout_handling")
+    .$type<"half_day" | "hr_review">()
+    .notNull()
+    .default("hr_review"),
+  payrollWeekendHolidayPaidAsOvertime: boolean("payroll_weekend_holiday_paid_as_overtime").notNull().default(true),
+
+  // Remote check-in (work-from-home / field staff, punching from their own
+  // paired phone instead of the kiosk or a fingerprint terminal) — see
+  // lib/remoteCheckIn.ts. "disabled" hides the feature entirely; a company
+  // can already have phones paired from before disabling it, they just
+  // stop being able to submit.
+  remoteCheckInMode: text("remote_checkin_mode")
+    .$type<"disabled" | "requires_approval" | "auto_approve">()
+    .notNull()
+    .default("disabled"),
+  // Only consulted when remoteCheckInMode is "auto_approve" — outside any
+  // configured geofenceSites row, the request falls back to pending
+  // instead of auto-approving.
+  remoteCheckInRequireGeofence: boolean("remote_checkin_require_geofence").notNull().default(false),
+  // A pending request older than this is treated as expired the next time
+  // anyone reads the list (see listRemoteCheckInRequests) — there's no
+  // background job in this app to sweep it proactively.
+  remoteCheckInExpiryHours: text("remote_checkin_expiry_hours").notNull().default("24"),
 });
 
 export const leaveRequests = pgTable("leave_requests", {
@@ -123,6 +173,12 @@ export const attendanceLogs = pgTable("attendance_logs", {
   message: text("message").notNull(),
   deviceId: uuid("device_id").references(() => devices.id),
   biometricDeviceId: uuid("biometric_device_id").references(() => biometricDevices.id),
+  // How this specific punch was verified — "pin" and "face" come from the
+  // kiosk (see routes/attendance.ts), "fingerprint"/"card"/"password" come
+  // from a ZKTeco terminal's own verify-mode code (see mapZktVerifyCode in
+  // routes/zkteco.ts). Defaults to "pin" for rows written before this
+  // column existed.
+  authType: text("auth_type").notNull().default("pin"),
   // The raw, verbatim timestamp string a fingerprint terminal sent for
   // this punch — not trusted as the actual event time (the terminal's
   // clock is unreliable, see occurredAt below), but a retry of the same
@@ -130,6 +186,13 @@ export const attendanceLogs = pgTable("attendance_logs", {
   // useful as a dedup key: two punches this close together with different
   // raw strings are genuinely different events, not a retry.
   sourceRawTimestamp: text("source_raw_timestamp"),
+  // True when this punch's corrected device time landed far from when the
+  // server actually received it — either the terminal buffered a backlog
+  // offline and pushed it late, or its clock jumped. occurredAt below is
+  // still the best estimate of when the punch really happened; this is
+  // just a signal for "double-check this one" / re-running that day's
+  // payroll, not a correctness flag on occurredAt itself.
+  syncedLate: boolean("synced_late").notNull().default(false),
   // The actual moment the event happened (kiosk tap or fingerprint punch),
   // as opposed to `createdAt` (row insertion time). These match for kiosk
   // rows, but diverge for a fingerprint terminal that was offline and
@@ -155,10 +218,36 @@ export const payrollDailyEntries = pgTable("payroll_daily_entries", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// A "device" is one paired kiosk. attendance/log and attendance/employees
-// require a valid, unrevoked device token — this is what makes attendance
-// impossible to fake from outside the office (the token never leaves the
-// physical kiosk it was paired on).
+// HR's decision on one employee's overtime for one day — only consulted
+// when orgSettings.otApprovalRequired is on (see calculateMonthlyPayroll in
+// payroll.ts, which only pays OT for dates with an "approved" row here).
+// A day with worked OT and no row at all is implicitly "pending". Keyed by
+// (org, employee, date) rather than a surrogate id so approving twice just
+// overwrites the same decision instead of creating duplicates.
+export const otApprovals = pgTable(
+  "ot_approvals",
+  {
+    orgId: uuid("org_id").notNull().references(() => orgs.id),
+    employeeCode: text("employee_code").notNull(),
+    date: text("date").notNull(), // YYYY-MM-DD
+    // Snapshot of the OT minutes this decision was made against — purely
+    // for the admin UI's audit trail, never re-trusted for pay math (that
+    // always recomputes fresh from attendance logs).
+    otMinutes: numeric("ot_minutes", { precision: 10, scale: 2 }).notNull(),
+    status: text("status").notNull().default("approved"), // "approved" | "rejected"
+    reviewedBy: text("reviewed_by").notNull(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.employeeCode, t.date] })],
+);
+
+// A "device" is one paired kiosk, OR — when employeeCode is set — one
+// employee's personal phone paired for remote check-in (see
+// lib/remoteCheckIn.ts). attendance/log and attendance/employees require a
+// valid, unrevoked device token — this is what makes attendance impossible
+// to fake from outside the office (the token never leaves the physical
+// kiosk it was paired on); a remote-checkin device token is scoped even
+// tighter, to submitting punches for that one employee only.
 export const devices = pgTable("devices", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull().references(() => orgs.id),
@@ -175,6 +264,12 @@ export const devices = pgTable("devices", {
   pairedAt: timestamp("paired_at", { withTimezone: true }).notNull().defaultNow(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  // Null for a shared kiosk. Set for a personal remote-checkin phone —
+  // carried over from the pairing code that created this row (see
+  // redeemPairingCode). Pairing a new phone for the same employee revokes
+  // whatever device previously held this employeeCode, enforcing "one
+  // paired phone per employee".
+  employeeCode: text("employee_code"),
 });
 
 // A registered fingerprint/access-control terminal (e.g. a ZKTeco F22)
@@ -190,19 +285,84 @@ export const biometricDevices = pgTable("biometric_devices", {
   name: text("name").notNull().default("Fingerprint Terminal"),
   lastSeenIp: text("last_seen_ip"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  // This terminal's hardware clock can't be trusted or fixed by hand (ADMS
+  // resyncs it off the server's HTTP response every heartbeat, drifting it
+  // right back). Instead we track the gap between "server time when a
+  // real-time punch arrived" and "what the device's own timestamp said",
+  // and use that gap to correct every punch's reported time — see
+  // ingestPunch in routes/zkteco.ts for the calibration logic. Null until
+  // the first punch is calibrated.
+  clockOffsetMs: bigint("clock_offset_ms", { mode: "number" }),
+  // A newly-observed offset that disagrees with clockOffsetMs, held for
+  // one punch to see if the NEXT punch confirms the same new gap (a real,
+  // lasting clock change) rather than promoting it immediately (which a
+  // single buffered/delayed punch would otherwise corrupt calibration
+  // with).
+  offsetCandidateMs: bigint("offset_candidate_ms", { mode: "number" }),
+  offsetCandidateAt: timestamp("offset_candidate_at", { withTimezone: true }),
   registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
 });
 
-// Short-lived, single-use codes an admin generates in Settings and reads
-// out to whoever is standing at the kiosk — the actual device token is
-// never displayed or transmitted anywhere except this one-time exchange.
+// Short-lived, single-use codes an admin generates in Settings (for a
+// kiosk) or on an employee's own record (for their remote-checkin phone —
+// see employeeCode below) and reads out to whoever is pairing — the actual
+// device token is never displayed or transmitted anywhere except this
+// one-time exchange. Redeemed by the same /devices/pair endpoint either
+// way; employeeCode is just carried through to the resulting device row.
 export const pairingCodes = pgTable("pairing_codes", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull().references(() => orgs.id),
   code: text("code").notNull(),
   deviceName: text("device_name").notNull().default("Kiosk"),
+  employeeCode: text("employee_code"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Known field/site coordinates a company can set up so remote check-ins
+// from those locations can be auto-approved without HR review (see
+// orgSettings.remoteCheckInRequireGeofence). Manual lat/lng entry — no map
+// picker in this pass.
+export const geofenceSites = pgTable("geofence_sites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => orgs.id),
+  name: text("name").notNull(),
+  latitude: numeric("latitude", { precision: 9, scale: 6 }).notNull(),
+  longitude: numeric("longitude", { precision: 9, scale: 6 }).notNull(),
+  radiusMeters: numeric("radius_meters", { precision: 10, scale: 2 }).notNull().default("200"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// One remote check-in/out submission. Stays "pending" (with its photo)
+// until HR decides or it expires — no attendanceLogs row exists for it
+// until approved, matching the spec: "it becomes a request, not a record,
+// until HR approves it". Auto-approved requests still get a row here for
+// the audit trail, just with status already "approved" and the photo
+// discarded immediately (no review ever happens for those).
+export const remoteCheckInRequests = pgTable("remote_checkin_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => orgs.id),
+  employeeCode: text("employee_code").notNull(),
+  employeeName: text("employee_name").notNull(),
+  action: text("action").notNull(), // "checkin" | "checkout"
+  status: text("status").notNull().default("pending"), // pending | approved | rejected | expired
+  // Server time at submission — the moment this becomes the punch's
+  // occurredAt if/when approved. Never the phone's own clock.
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  deviceId: uuid("device_id").references(() => devices.id),
+  // A live camera capture, kept only until the decision is made (or the
+  // request expires) — see decideRemoteCheckInRequest / listRemoteCheckInRequests,
+  // both of which null this out the moment a request leaves "pending".
+  photoDataUrl: text("photo_data_url"),
+  latitude: numeric("latitude", { precision: 9, scale: 6 }),
+  longitude: numeric("longitude", { precision: 9, scale: 6 }),
+  // Null when geofencing isn't configured/relevant for this request (e.g.
+  // mode is "requires_approval", where location is informational only).
+  withinGeofence: boolean("within_geofence"),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

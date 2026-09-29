@@ -45,6 +45,16 @@ export function minutesLate(checkIn: Date, expected: string): number {
   return Math.max(0, actualMin - expectedMin);
 }
 
+// Symmetric to minutesLate: how many minutes before the expected
+// end-of-day a checkout happened — 0 if it was at or after that time.
+export function minutesEarly(checkOut: Date, expected: string): number {
+  const t = parseHHmm(expected);
+  if (!t) return 0;
+  const expectedMin = t.h * 60 + t.m;
+  const actualMin = checkOut.getHours() * 60 + checkOut.getMinutes();
+  return Math.max(0, expectedMin - actualMin);
+}
+
 export function scoreFromMinutesLate(min: number): number {
   if (min <= 5) return 100;
   if (min <= 15) return 90;

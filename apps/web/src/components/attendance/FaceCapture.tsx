@@ -7,8 +7,25 @@ import { createBlinkDetector } from "../../lib/liveness";
 interface Props {
   employeeName: string | undefined;
   error?: string;
-  onCaptured: (descriptor: number[]) => void;
+  onCaptured: (descriptor: number[], photoDataUrl?: string) => void;
   onBack: () => void;
+  // When true, also grabs a JPEG snapshot at the moment of capture and
+  // passes it as onCaptured's second argument — used by remote check-in,
+  // where HR needs to see the photo to review a pending request. The
+  // kiosk (capturePhoto omitted) never takes or sends one; the descriptor
+  // alone is enough there since a supervisor isn't reviewing kiosk punches.
+  capturePhoto?: boolean;
+}
+
+function capturePhotoDataUrl(video: HTMLVideoElement | null): string | undefined {
+  if (!video || video.videoWidth === 0) return undefined;
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return undefined;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.8);
 }
 
 type Status = "loading" | "scanning" | "liveness" | "found" | "denied" | "error";
@@ -27,7 +44,7 @@ const LIVENESS_GRACE_MS = 3000;
 // stops a coworker from just holding up a photo of the enrolled employee
 // to the camera. The descriptor never leaves this component as anything
 // but numbers; no photo is stored or sent anywhere.
-export default function FaceCapture({ employeeName, error, onCaptured, onBack }: Props) {
+export default function FaceCapture({ employeeName, error, onCaptured, onBack, capturePhoto }: Props) {
   const { t, dir } = useLocale();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<Status>("loading");
@@ -115,7 +132,8 @@ export default function FaceCapture({ employeeName, error, onCaptured, onBack }:
 
     function finalize(descriptor: number[]) {
       setStatus("found");
-      setTimeout(() => !cancelled && onCaptured(descriptor), 400);
+      const photoDataUrl = capturePhoto ? capturePhotoDataUrl(videoRef.current) : undefined;
+      setTimeout(() => !cancelled && onCaptured(descriptor, photoDataUrl), 400);
     }
 
     run();

@@ -5,6 +5,7 @@ import adminRouter from "./admin";
 import leaveRouter from "./leave";
 import authRouter from "./auth";
 import devicesRouter from "./devices";
+import remoteCheckInRouter from "./remoteCheckIn";
 
 const router: IRouter = Router();
 
@@ -12,6 +13,7 @@ router.use(healthRouter);
 router.use(authRouter);
 router.use(devicesRouter);
 router.use(attendanceRouter);
+router.use(remoteCheckInRouter);
 router.use(leaveRouter);
 router.use(adminRouter);
 

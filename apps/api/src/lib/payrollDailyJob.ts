@@ -5,7 +5,7 @@
 
 import { getAttendanceLogs } from "./attendanceLogs";
 import { getAllEmployees } from "./employees";
-import { getOfficeSettings } from "./settings";
+import { getOfficeSettings, toPayrollPolicy } from "./settings";
 import { calculateDailyPayroll, type PayrollShiftConfig } from "./payroll";
 import { recordDailyPayrollEntry } from "./payrollDailyEntries";
 import { logger } from "./logger";
@@ -32,13 +32,14 @@ export async function runDailyPayrollJob(orgId: string, dateOverride?: string): 
       breakStart: settings.payrollBreakStart,
       breakEnd: settings.payrollBreakEnd,
     };
+    const policy = toPayrollPolicy(settings);
 
     const activeEmployees = employees.filter((e) => e.active);
     let written = 0;
 
     for (const employee of activeEmployees) {
       try {
-        const result = calculateDailyPayroll({ employee, date, logs, shift });
+        const result = calculateDailyPayroll({ employee, date, logs, shift, policy });
         await recordDailyPayrollEntry(orgId, result);
         written++;
       } catch (err) {

@@ -1,7 +1,8 @@
 import { Link } from "wouter";
-import { Lock, Building2, Check, Languages } from "lucide-react";
+import { Lock, Languages } from "lucide-react";
 import { useLocale } from "@/contexts/LocaleContext";
 import PoweredBy from "@/components/PoweredBy";
+import GlassBackdrop from "@/components/GlassBackdrop";
 import Clock from "../components/attendance/Clock";
 import ReminderBanner from "../components/attendance/ReminderBanner";
 import ActionStep from "../components/attendance/ActionStep";
@@ -20,7 +21,7 @@ function LanguageToggle() {
   return (
     <button
       onClick={() => setLocale(locale === "en" ? "ar" : "en")}
-      className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors inline-flex items-center gap-1.5"
+      className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50 dark:bg-secondary/30 glass rounded-full hover:text-primary transition-colors inline-flex items-center gap-1.5"
     >
       <Languages className="w-3.5 h-3.5" /> {locale === "en" ? "العربية" : "English"}
     </button>
@@ -62,48 +63,45 @@ export default function AttendancePage() {
   if (step === "splash") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
-        <div className="absolute top-4 end-4 flex items-center gap-2">
+        <GlassBackdrop />
+        <div className="absolute top-4 end-4 flex items-center gap-2 z-10">
           <LanguageToggle />
           <Link
             href="/admin"
-            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors inline-flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50 dark:bg-secondary/30 glass rounded-full hover:text-primary transition-colors inline-flex items-center gap-1.5"
           >
             <Lock className="w-3.5 h-3.5" /> {t("kiosk.admin")}
           </Link>
         </div>
         <div
-          className="flex flex-col items-center gap-8 relative"
+          className="flex flex-col items-center relative z-10"
           style={{ animation: "fadeIn 1s ease-out forwards" }}
         >
-          <div className="relative">
-            <div className="w-40 h-40 rounded-2xl bg-white border border-border flex items-center justify-center shadow-floating p-3">
-              {org?.logoDataUrl ? (
-                <img src={org.logoDataUrl} alt="" className="w-full h-full object-contain" />
-              ) : (
-                <Building2 className="w-16 h-16 text-slate-400" />
-              )}
-            </div>
-            <div className="absolute -bottom-3 -end-3 w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-panel">
-              <Check className="w-5 h-5 text-primary-foreground" />
-            </div>
-          </div>
           <div className="text-center">
             <h1 className="text-4xl font-bold text-foreground tracking-tight">{org?.name || t("kiosk.title")}</h1>
-            <p className="text-muted-foreground mt-2 text-lg">{t("kiosk.subtitle")}</p>
+            <p className="text-muted-foreground/70 mt-2 text-sm font-medium" dir="ltr">
+              {t("kiosk.subtitle")}{" "}
+              <span className="text-foreground font-semibold">quard</span>
+              <span className="text-primary font-semibold">Link</span>
+            </p>
           </div>
-          <div className="flex gap-2">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-2.5 h-2.5 rounded-full bg-primary"
-                style={{ animation: `pulse 1.5s ${i * 0.3}s ease-in-out infinite` }}
-              />
-            ))}
-          </div>
+          <svg className="w-7 h-7 mt-7" viewBox="0 0 24 24" style={{ animation: "spin 0.9s linear infinite" }}>
+            <circle cx="12" cy="12" r="9.5" fill="none" stroke="hsl(var(--primary) / 0.15)" strokeWidth="2" />
+            <circle
+              cx="12"
+              cy="12"
+              r="9.5"
+              fill="none"
+              stroke="hsl(var(--primary))"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeDasharray="24 100"
+            />
+          </svg>
         </div>
         <style>{`
           @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-          @keyframes pulse { 0%,100% { opacity:.3; transform:scale(.8); } 50% { opacity:1; transform:scale(1.1); } }
+          @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
         <PoweredBy />
       </div>
@@ -112,6 +110,7 @@ export default function AttendancePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      <GlassBackdrop />
       <PoweredBy />
       {reminder && <ReminderBanner reminder={reminder} onDismiss={dismiss} />}
 
@@ -137,7 +136,7 @@ export default function AttendancePage() {
           <LanguageToggle />
           <Link
             href="/admin"
-            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors inline-flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50 dark:bg-secondary/30 glass rounded-full hover:text-primary transition-colors inline-flex items-center gap-1.5"
           >
             <Lock className="w-3.5 h-3.5" /> {t("kiosk.admin")}
           </Link>

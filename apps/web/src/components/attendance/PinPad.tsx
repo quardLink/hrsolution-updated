@@ -17,27 +17,27 @@ export default function PinPad({ onDigit, onClear, onBackspace, digitsDisabled }
           key={d}
           onClick={() => onDigit(d)}
           disabled={digitsDisabled}
-          className="h-16 rounded-xl bg-muted border border-border text-foreground font-bold text-xl hover:bg-primary/15 hover:border-primary/50 active:scale-95 transition-all disabled:opacity-50"
+          className="h-16 rounded-2xl bg-secondary/50 dark:bg-secondary/25 glass text-foreground font-bold text-xl shadow-sm shadow-black/5 dark:shadow-black/20 hover:bg-primary/15 hover:text-primary active:scale-95 transition-all disabled:opacity-50"
         >
           {d}
         </button>
       ))}
       <button
         onClick={onClear}
-        className="h-16 rounded-xl bg-muted border border-border text-muted-foreground font-semibold text-sm hover:bg-destructive/10 hover:border-destructive/40 active:scale-95 transition-all"
+        className="h-16 rounded-2xl bg-secondary/50 dark:bg-secondary/25 glass text-muted-foreground font-semibold text-sm shadow-sm shadow-black/5 dark:shadow-black/20 hover:bg-destructive/10 hover:text-destructive active:scale-95 transition-all"
       >
         {t("kiosk.clear")}
       </button>
       <button
         onClick={() => onDigit("0")}
         disabled={digitsDisabled}
-        className="h-16 rounded-xl bg-muted border border-border text-foreground font-bold text-xl hover:bg-primary/15 hover:border-primary/50 active:scale-95 transition-all disabled:opacity-50"
+        className="h-16 rounded-2xl bg-secondary/50 dark:bg-secondary/25 glass text-foreground font-bold text-xl shadow-sm shadow-black/5 dark:shadow-black/20 hover:bg-primary/15 hover:text-primary active:scale-95 transition-all disabled:opacity-50"
       >
         0
       </button>
       <button
         onClick={onBackspace}
-        className="h-16 rounded-xl bg-muted border border-border text-muted-foreground font-semibold text-lg hover:bg-secondary active:scale-95 transition-all flex items-center justify-center"
+        className="h-16 rounded-2xl bg-secondary/50 dark:bg-secondary/25 glass text-muted-foreground font-semibold text-lg shadow-sm shadow-black/5 dark:shadow-black/20 hover:bg-secondary active:scale-95 transition-all flex items-center justify-center"
       >
         <Delete className={`w-5 h-5 ${dir === "rtl" ? "scale-x-[-1]" : ""}`} />
       </button>

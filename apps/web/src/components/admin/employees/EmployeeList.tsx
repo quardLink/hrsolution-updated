@@ -11,13 +11,14 @@ interface Props {
   onEdit: (emp: Employee) => void;
   onDeactivate: (emp: Employee) => void;
   onReactivate: (emp: Employee) => void;
+  onHardDelete: (emp: Employee) => void;
 }
 
 function initials(name: string): string {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export default function EmployeeList({ employees, roles, loading, onEdit, onDeactivate, onReactivate }: Props) {
+export default function EmployeeList({ employees, roles, loading, onEdit, onDeactivate, onReactivate, onHardDelete }: Props) {
   const { t } = useLocale();
 
   function roleLabel(value: string): string {
@@ -93,6 +94,9 @@ export default function EmployeeList({ employees, roles, loading, onEdit, onDeac
                     {t("common.reactivate")}
                   </Button>
                 )}
+                <Button variant="ghost" size="sm" onClick={() => onHardDelete(emp)} className="text-destructive hover:text-destructive">
+                  {t("common.delete")}
+                </Button>
               </div>
             </TableCell>
           </TableRow>

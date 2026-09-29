@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,17 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useLocale } from "@/contexts/LocaleContext";
+import { useAdminApi } from "../../contexts/AdminApiContext";
 import { useEmployees, type Employee } from "../../hooks/useEmployees";
 import EmployeeList from "./employees/EmployeeList";
 import EmployeeFormModal from "./employees/EmployeeFormModal";
 
 export default function EmployeesTab() {
   const { t } = useLocale();
-  const { employees, roles, loading, saveEmployee, deactivate, reactivate } = useEmployees();
+  const { baseUrl } = useAdminApi();
+  const { employees, roles, loading, saveEmployee, deactivate, reactivate, hardDelete } = useEmployees();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [search, setSearch] = useState("");
+  // Only needed to decide whether EmployeeFormModal shows the per-employee
+  // Payroll Method field (Hybrid mode only) — fetched directly rather than
+  // pulling in the full useSettingsForm draft/save machinery for one field.
+  const [companyPayrollMethod, setCompanyPayrollMethod] = useState<"hourly" | "daily" | "hybrid">("daily");
+
+  useEffect(() => {
+    fetch(`${baseUrl}/api/admin/settings`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.settings?.payrollMethod) setCompanyPayrollMethod(data.settings.payrollMethod);
+      })
+      .catch(() => {});
+  }, [baseUrl]);
 
   function openAdd() {
     setEditing(null);
@@ -73,6 +88,7 @@ export default function EmployeesTab() {
             onEdit={openEdit}
             onDeactivate={deactivate}
             onReactivate={reactivate}
+            onHardDelete={hardDelete}
           />
         </CardContent>
       </Card>
@@ -81,6 +97,7 @@ export default function EmployeesTab() {
         <EmployeeFormModal
           editing={editing}
           roles={roles}
+          companyPayrollMethod={companyPayrollMethod}
           onClose={() => setShowForm(false)}
           onSave={saveEmployee}
         />

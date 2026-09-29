@@ -1,6 +1,7 @@
 import { useState } from "react";
 import BottomSheetModal from "../shared/BottomSheetModal";
 import FaceEnroll from "./FaceEnroll";
+import RemoteDevicePairing from "./RemoteDevicePairing";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import type { Employee, EmployeeFormValues, EmployeeRole } from "../../../hooks/
 interface Props {
   editing: Employee | null;
   roles: EmployeeRole[];
+  companyPayrollMethod: "hourly" | "daily" | "hybrid";
   onClose: () => void;
   onSave: (form: EmployeeFormValues, editing: Employee | null) => Promise<boolean>;
 }
@@ -30,9 +32,10 @@ const EMPTY_FORM: EmployeeFormValues = {
   afternoonEnd: "19:00",
   monthlySalary: 0,
   biometricPin: null,
+  payrollMethod: null,
 };
 
-export default function EmployeeFormModal({ editing, roles, onClose, onSave }: Props) {
+export default function EmployeeFormModal({ editing, roles, companyPayrollMethod, onClose, onSave }: Props) {
   const { t } = useLocale();
   const [form, setForm] = useState<EmployeeFormValues>(editing ? { ...editing, pin: "" } : EMPTY_FORM);
   const [salaryText, setSalaryText] = useState(
@@ -120,6 +123,25 @@ export default function EmployeeFormModal({ editing, roles, onClose, onSave }: P
             <p className="text-xs text-muted-foreground">{t("employees.roleManageHint")}</p>
           </div>
 
+          {companyPayrollMethod === "hybrid" && (
+            <div className="space-y-1.5">
+              <Label>{t("settings.payrollMethodEmployeeLabel")}</Label>
+              <Select
+                value={form.payrollMethod ?? "hourly"}
+                onValueChange={(value) => setForm({ ...form, payrollMethod: value as "hourly" | "daily" })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hourly">{t("settings.payrollMethodHourly")}</SelectItem>
+                  <SelectItem value="daily">{t("settings.payrollMethodDaily")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t("settings.payrollMethodEmployeeHint")}</p>
+            </div>
+          )}
+
           <FaceEnroll
             currentlyEnrolled={editing?.faceEnrolled ?? false}
             pending={form.faceDescriptor}
@@ -140,6 +162,8 @@ export default function EmployeeFormModal({ editing, roles, onClose, onSave }: P
             />
             <p className="text-xs text-muted-foreground">{t("employees.biometricPinHint")}</p>
           </div>
+
+          {editing && <RemoteDevicePairing employeeId={editing.id} />}
 
           <div className="border-t pt-4">
             <label className="flex items-center gap-2.5 mb-3 cursor-pointer">

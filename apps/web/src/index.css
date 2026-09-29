@@ -103,39 +103,43 @@
    ============================================================ */
 
 :root {
-  /* Light mode: warm, near-white surfaces; black-based overlay tints
+  /* Light mode: cool lavender-white surfaces; violet-black overlay tints
      (a light UI's hover/press/outline states darken toward black,
-     mirroring how dark mode's lighten toward white below). */
-  --button-outline: rgba(20, 16, 10, .10);
-  --badge-outline: rgba(20, 16, 10, .07);
+     mirroring how dark mode's lighten toward white below). Brand purple
+     #5D3FD3 (hsl 252 63% 54%) is the single accent — every other token
+     stays a desaturated tint of the same 250-260 hue family so the whole
+     app reads as one deliberate purple-glass palette rather than the
+     accent color sitting on top of a mismatched neutral. */
+  --button-outline: rgba(40, 25, 80, .10);
+  --badge-outline: rgba(40, 25, 80, .07);
   --opaque-button-border-intensity: 8;
-  --elevate-1: rgba(20, 16, 10, .035);
-  --elevate-2: rgba(20, 16, 10, .07);
+  --elevate-1: rgba(40, 25, 80, .035);
+  --elevate-2: rgba(40, 25, 80, .07);
 
-  --background: 36 38% 97%;
-  --foreground: 240 10% 12%;
-  --border: 30 15% 88%;
-  --card: 40 35% 99%;
-  --card-foreground: 240 10% 12%;
-  --card-border: 30 15% 91%;
-  --sidebar: 33 22% 95%;
-  --sidebar-foreground: 240 10% 15%;
-  --sidebar-border: 30 15% 88%;
-  --sidebar-primary: 160 64% 34%;
+  --background: 255 40% 97%;
+  --foreground: 255 15% 13%;
+  --border: 255 20% 90%;
+  --card: 255 45% 99%;
+  --card-foreground: 255 15% 13%;
+  --card-border: 255 20% 92%;
+  --sidebar: 255 30% 96%;
+  --sidebar-foreground: 255 12% 16%;
+  --sidebar-border: 255 20% 89%;
+  --sidebar-primary: 252 63% 54%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 30 20% 91%;
-  --sidebar-accent-foreground: 240 10% 15%;
-  --sidebar-ring: 160 64% 34%;
-  --popover: 40 35% 99%;
-  --popover-foreground: 240 10% 12%;
-  --popover-border: 30 15% 91%;
-  --primary: 160 64% 34%;
+  --sidebar-accent: 255 35% 93%;
+  --sidebar-accent-foreground: 255 12% 16%;
+  --sidebar-ring: 252 63% 54%;
+  --popover: 255 45% 99%;
+  --popover-foreground: 255 15% 13%;
+  --popover-border: 255 20% 92%;
+  --primary: 252 63% 54%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 30 20% 94%;
-  --secondary-foreground: 240 8% 20%;
-  --muted: 30 20% 94%;
-  --muted-foreground: 240 6% 45%;
-  --accent: 160 64% 34%;
+  --secondary: 255 30% 95%;
+  --secondary-foreground: 255 10% 22%;
+  --muted: 255 30% 95%;
+  --muted-foreground: 255 8% 47%;
+  --accent: 252 63% 54%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 70% 50%;
   --destructive-foreground: 0 0% 100%;
@@ -145,8 +149,15 @@
   --warning-foreground: 20 40% 12%;
   --info: 217 80% 48%;
   --info-foreground: 0 0% 100%;
-  --input: 30 15% 88%;
-  --ring: 160 64% 34%;
+  --input: 255 20% 88%;
+  --ring: 252 63% 54%;
+
+  /* Ambient glass-blob glow colors, shared by both themes — AdminShell
+     draws the blurred backdrop with these; light mode uses them at very
+     low opacity (a hint of tint), dark mode at full strength. */
+  --glow-1: 252 70% 55%;
+  --glow-2: 268 65% 60%;
+  --glow-3: 280 55% 38%;
 
   --block-yellow: 45 88% 72%;
   --block-yellow-foreground: 240 10% 14%;
@@ -163,8 +174,8 @@
   --chart-4: 0 70% 50%;
   --chart-5: 280 55% 50%;
 
-  --app-font-sans: 'Inter', 'Segoe UI', sans-serif;
-  --app-font-sans-ar: 'IBM Plex Sans Arabic', 'Inter', 'Segoe UI', sans-serif;
+  --app-font-sans: 'DM Sans', 'Segoe UI', sans-serif;
+  --app-font-sans-ar: 'IBM Plex Sans Arabic', 'DM Sans', 'Segoe UI', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: 1.25rem;
@@ -192,36 +203,44 @@
 }
 
 .dark {
-  /* Dark mode: cool near-black surfaces; white-based overlay tints. */
+  /* Dark mode: deep violet-black glass surfaces; white-based overlay
+     tints. --card and --sidebar are deliberately kept as plain opaque
+     HSL triples here — the translucency for the "liquid glass" look is
+     layered on at the point of use (Card, the sidebar panel) via a
+     Tailwind bg-opacity utility plus backdrop-blur, over the blurred
+     --glow-* blobs AdminShell paints behind everything. Doing it there
+     rather than baking alpha into the token keeps every other consumer
+     of --card/--sidebar (e.g. plain non-glass reads of the token)
+     unaffected. */
   --button-outline: rgba(255,255,255, .12);
   --badge-outline: rgba(255,255,255, .08);
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .08);
 
-  --background: 220 14% 6%;
-  --foreground: 0 0% 95%;
-  --border: 220 10% 16%;
-  --card: 220 14% 9%;
-  --card-foreground: 0 0% 95%;
-  --card-border: 220 10% 17%;
-  --sidebar: 220 16% 4%;
-  --sidebar-foreground: 0 0% 92%;
-  --sidebar-border: 220 10% 14%;
-  --sidebar-primary: 160 55% 52%;
+  --background: 260 35% 6%;
+  --foreground: 255 25% 96%;
+  --border: 260 20% 18%;
+  --card: 260 30% 11%;
+  --card-foreground: 255 25% 96%;
+  --card-border: 260 25% 22%;
+  --sidebar: 262 40% 5%;
+  --sidebar-foreground: 255 20% 94%;
+  --sidebar-border: 260 20% 16%;
+  --sidebar-primary: 252 68% 63%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 10% 14%;
-  --sidebar-accent-foreground: 0 0% 96%;
-  --sidebar-ring: 160 55% 52%;
-  --popover: 220 14% 10%;
-  --popover-foreground: 0 0% 95%;
-  --popover-border: 220 10% 18%;
-  --primary: 160 55% 52%;
+  --sidebar-accent: 260 25% 15%;
+  --sidebar-accent-foreground: 255 20% 95%;
+  --sidebar-ring: 252 68% 63%;
+  --popover: 260 28% 12%;
+  --popover-foreground: 255 25% 96%;
+  --popover-border: 260 22% 22%;
+  --primary: 252 63% 58%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 10% 14%;
-  --secondary-foreground: 0 0% 92%;
-  --muted: 220 10% 12%;
-  --muted-foreground: 220 8% 62%;
-  --accent: 160 55% 52%;
+  --secondary: 260 22% 14%;
+  --secondary-foreground: 255 20% 94%;
+  --muted: 260 20% 13%;
+  --muted-foreground: 255 12% 65%;
+  --accent: 252 63% 58%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 58%;
   --destructive-foreground: 0 0% 100%;
@@ -231,8 +250,12 @@
   --warning-foreground: 20 30% 10%;
   --info: 217 85% 62%;
   --info-foreground: 0 0% 100%;
-  --input: 220 10% 18%;
-  --ring: 160 55% 52%;
+  --input: 260 20% 19%;
+  --ring: 252 63% 58%;
+
+  --glow-1: 252 75% 58%;
+  --glow-2: 268 70% 62%;
+  --glow-3: 280 60% 40%;
 
   /* Same block identities as light mode, deepened into muted tinted
      surfaces (rather than kept pastel-bright) so they read as cards
@@ -279,6 +302,16 @@
 }
 @utility shadow-floating {
   box-shadow: var(--shadow-xl);
+}
+
+/* The frosted-glass finish shared by cards, the sidebar panel and every
+   glass-tile stat card — backdrop-blur alone doesn't need a custom
+   utility (Tailwind ships that), but Safari still wants the -webkit-
+   prefix repeated on every element that uses it, which `backdrop-blur-xl`
+   alone doesn't add. */
+@utility glass {
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
 }
 
 @layer base {

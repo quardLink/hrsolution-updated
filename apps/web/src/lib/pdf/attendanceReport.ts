@@ -168,6 +168,19 @@ function formatBreaks(s: DaySummary): string {
     .join("; ");
 }
 
+const STATUS_LABELS: Record<DaySummary["status"], string> = {
+  present: "Present",
+  late: "Late",
+  early_leave: "Early Leave",
+  missing_checkout: "Missing Checkout",
+  weekend: "Weekend",
+  unbalanced: "Unbalanced",
+};
+
+function statusLabel(s: DaySummary): string {
+  return s.status === "unbalanced" ? s.anomalyReason : STATUS_LABELS[s.status];
+}
+
 function drawDailyLogTable(doc: jsPDF, summary: DaySummary[], margin: number, startY: number): void {
   autoTable(doc, {
     startY,
@@ -180,7 +193,7 @@ function drawDailyLogTable(doc: jsPDF, summary: DaySummary[], margin: number, st
       formatBreaks(s),
       s.totalHours > 0 ? s.totalHours.toFixed(1) : "—",
       s.minutesLate > 0 ? `${s.minutesLate}m` : "—",
-      s.hasAnomaly ? s.anomalyReason : "Complete",
+      statusLabel(s),
     ]),
     theme: "striped",
     headStyles: REPORT_TABLE_HEAD_STYLE,
@@ -188,7 +201,7 @@ function drawDailyLogTable(doc: jsPDF, summary: DaySummary[], margin: number, st
     margin: { left: margin, right: margin },
     didParseCell: (data) => {
       if (data.section === "body" && data.column.index === 7) {
-        if (data.cell.raw !== "Complete") {
+        if (data.cell.raw !== "Present") {
           data.cell.styles.textColor = [180, 83, 9];
           data.cell.styles.fontStyle = "bold";
         } else {

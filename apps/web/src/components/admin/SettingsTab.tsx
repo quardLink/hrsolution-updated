@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { Building2, Clock, Tag, Smartphone, Lock } from "lucide-react";
+import { Building2, Clock, Tag, Smartphone, Lock, Wallet, Radio } from "lucide-react";
 import { useLocale } from "@/contexts/LocaleContext";
 import { useSettingsForm } from "../../hooks/useSettingsForm";
 import { useRoles } from "../../hooks/useRoles";
 import SettingsGeneralPanel from "./settings/SettingsGeneralPanel";
 import SettingsHoursPanel from "./settings/SettingsHoursPanel";
+import SettingsPayrollMethodPanel from "./settings/SettingsPayrollMethodPanel";
+import SettingsRemoteCheckInPanel from "./settings/SettingsRemoteCheckInPanel";
 import SettingsRolesPanel from "./settings/SettingsRolesPanel";
 import ChangePasswordCard from "./settings/ChangePasswordCard";
 import PublicLeaveLinkCard from "./settings/PublicLeaveLinkCard";
 import DevicesPanel from "./settings/DevicesPanel";
 import BiometricDevicesPanel from "./settings/BiometricDevicesPanel";
 
-type Section = "general" | "hours" | "roles" | "devices" | "security";
+type Section = "general" | "hours" | "payroll" | "remote" | "roles" | "devices" | "security";
 
 export default function SettingsTab() {
   const { t } = useLocale();
@@ -22,6 +24,8 @@ export default function SettingsTab() {
   const SECTIONS: { id: Section; label: string; icon: typeof Building2 }[] = [
     { id: "general", label: t("settings.sectionGeneral"), icon: Building2 },
     { id: "hours", label: t("settings.sectionHours"), icon: Clock },
+    { id: "payroll", label: t("settings.sectionPayroll"), icon: Wallet },
+    { id: "remote", label: t("settings.sectionRemote"), icon: Radio },
     { id: "roles", label: t("settings.sectionRoles"), icon: Tag },
     { id: "devices", label: t("settings.sectionDevices"), icon: Smartphone },
     { id: "security", label: t("settings.sectionSecurity"), icon: Lock },
@@ -71,6 +75,30 @@ export default function SettingsTab() {
 
           {section === "hours" && (
             <SettingsHoursPanel
+              draft={draft}
+              onChange={setDraft}
+              onSubmit={save}
+              isDirty={isDirty}
+              saving={saving}
+              savedAt={savedAt}
+              onReset={reset}
+            />
+          )}
+
+          {section === "payroll" && (
+            <SettingsPayrollMethodPanel
+              draft={draft}
+              onChange={setDraft}
+              onSubmit={save}
+              isDirty={isDirty}
+              saving={saving}
+              savedAt={savedAt}
+              onReset={reset}
+            />
+          )}
+
+          {section === "remote" && (
+            <SettingsRemoteCheckInPanel
               draft={draft}
               onChange={setDraft}
               onSubmit={save}

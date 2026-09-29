@@ -3,6 +3,7 @@ import express from "express";
 import {
   findBiometricDeviceBySerial,
   touchBiometricDeviceLastSeen,
+  updateDeviceClockOffset,
   type BiometricDevice,
 } from "../lib/biometricDevices";
 import { findEmployeeByPunchPin } from "../lib/employees";
@@ -102,6 +103,27 @@ router.post("/fdata", (_req: Request, res: Response): void => {
   textReply(res, "OK");
 });
 
+// ATTLOG's 4th tab-separated field ("Verify") is the terminal's own
+// verification-method code. Values vary a bit across ZKTeco firmware
+// generations, but this covers the common ones; an unrecognized code
+// falls back to "fingerprint" since that's this device family's primary
+// (usually only) modality — better than mislabeling it "unknown" for a
+// value that just isn't in this table yet.
+function mapZktVerifyCode(code: string | undefined): string {
+  switch (code?.trim()) {
+    case "0":
+      return "password";
+    case "2":
+      return "card";
+    case "4":
+    case "15":
+      return "face";
+    case "1":
+    default:
+      return "fingerprint";
+  }
+}
+
 async function ingestAttLog(device: BiometricDevice, body: string, log: Logger): Promise<void> {
   const org = await getOrgById(device.orgId);
   const timeZone = org?.timezone ?? "Asia/Riyadh";
@@ -111,49 +133,164 @@ async function ingestAttLog(device: BiometricDevice, body: string, log: Logger):
     .map((l) => l.trim())
     .filter(Boolean);
 
+  // A single push can carry a whole backlog of buffered punches at once —
+  // exactly the case calibration most needs to get right. Thread the
+  // (possibly just-updated) device state from one punch to the next so a
+  // calibration made earlier in this same batch is visible to later lines
+  // in it, not just to the next separate HTTP request.
+  let current = device;
   for (const line of lines) {
     const fields = line.split("\t");
     const pin = fields[0]?.trim();
     const rawTime = fields[1]?.trim();
     if (!pin || !rawTime) continue;
+    const authType = mapZktVerifyCode(fields[3]);
 
     try {
-      await ingestPunch(device, timeZone, pin, rawTime, log);
+      current = await ingestPunch(current, timeZone, pin, rawTime, authType, log);
     } catch (err) {
       log.error({ err, pin, rawTime }, "Failed to record fingerprint punch");
     }
   }
 }
 
-async function ingestPunch(device: BiometricDevice, timeZone: string, pin: string, rawTime: string, log: Logger): Promise<void> {
+// ZKTeco's own clock can't be trusted OR fixed by hand: ADMS resyncs the
+// device's hardware clock off this server's HTTP response on every
+// heartbeat, so any manual correction on the keypad just gets reset on the
+// next check-in, combined with the unit's own (often wrong) GMT offset.
+// But the device's own reported time in each ATTLOG line is the only way
+// to recover the true time of a punch that was buffered offline and
+// uploaded late (see calibrateClock below) — so instead of ignoring it
+// outright, we track the gap between it and the server's own clock and
+// use that as a correction factor, refreshed on every real-time punch.
+const MIN_PUNCH_GAP_MS = 2 * 60 * 1000; // treat a repeat punch this close together as a double tap, not a real event
+const CALIBRATION_TOLERANCE_MS = 3 * 60 * 1000; // gap this close to the known offset = an ordinary real-time push
+const CANDIDATE_CONFIRM_TOLERANCE_MS = 2 * 60 * 1000; // how close two outlier gaps must be to confirm a real clock change
+const CANDIDATE_MAX_AGE_MS = 15 * 60 * 1000; // a candidate offset older than this can't confirm a later outlier
+
+// ZKT ATTLOG's own timestamp field, e.g. "2026-09-23 16:59:00" — a wall
+// clock reading in whatever (possibly wrong) timezone/offset the device
+// itself is on. Parsed as a bare local Date purely as an arbitrary anchor
+// point; calibrateClock's offset bridges it to real time, so how this is
+// interpreted doesn't matter as long as it's done consistently.
+function parseDeviceTimestamp(raw: string): Date | null {
+  const m = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [year, month, day, hour, minute, second] = m.slice(1).map(Number);
+  return new Date(year, month - 1, day, hour, minute, second);
+}
+
+interface ClockCalibration {
+  occurredAt: Date;
+  syncedLate: boolean;
+  persist: { clockOffsetMs?: number; offsetCandidateMs?: number | null; offsetCandidateAt?: Date | null } | null;
+}
+
+// Decides what this punch's real occurredAt was, and whether the device's
+// stored clockOffsetMs should change. See the constants above for the
+// three cases: first-ever punch (seed the offset), an ordinary real-time
+// push (small drift, refine the offset), or an outlier (buffered backlog
+// or a real clock change — corrected with the OLD trusted offset unless a
+// second outlier confirms the new gap).
+function calibrateClock(device: BiometricDevice, deviceTime: Date, serverNow: Date): ClockCalibration {
+  const rawGapMs = serverNow.getTime() - deviceTime.getTime();
+
+  if (device.clockOffsetMs === null) {
+    return {
+      occurredAt: serverNow,
+      syncedLate: false,
+      persist: { clockOffsetMs: rawGapMs, offsetCandidateMs: null, offsetCandidateAt: null },
+    };
+  }
+
+  const diff = rawGapMs - device.clockOffsetMs;
+  if (Math.abs(diff) <= CALIBRATION_TOLERANCE_MS) {
+    const newOffset = Math.round(device.clockOffsetMs * 0.8 + rawGapMs * 0.2);
+    return {
+      occurredAt: new Date(deviceTime.getTime() + newOffset),
+      syncedLate: false,
+      persist: { clockOffsetMs: newOffset, offsetCandidateMs: null, offsetCandidateAt: null },
+    };
+  }
+
+  const candidate = device.offsetCandidateMs;
+  const candidateFresh =
+    candidate !== null &&
+    device.offsetCandidateAt !== null &&
+    serverNow.getTime() - device.offsetCandidateAt.getTime() <= CANDIDATE_MAX_AGE_MS;
+
+  if (candidateFresh && Math.abs(rawGapMs - candidate!) <= CANDIDATE_CONFIRM_TOLERANCE_MS) {
+    // Two outliers in a row with a consistent gap — this is a lasting
+    // clock change (e.g. someone corrected the device's timezone), not a
+    // one-off buffered batch. Adopt it as the new calibrated offset.
+    return {
+      occurredAt: new Date(deviceTime.getTime() + rawGapMs),
+      syncedLate: false,
+      persist: { clockOffsetMs: rawGapMs, offsetCandidateMs: null, offsetCandidateAt: null },
+    };
+  }
+
+  return {
+    occurredAt: new Date(deviceTime.getTime() + device.clockOffsetMs),
+    syncedLate: true,
+    persist: { offsetCandidateMs: rawGapMs, offsetCandidateAt: serverNow },
+  };
+}
+
+// Returns the (possibly calibration-updated) device state, so a batch push
+// covering several punches can carry that update from one line to the
+// next — see the comment on `current` in ingestAttLog.
+async function ingestPunch(
+  device: BiometricDevice,
+  timeZone: string,
+  pin: string,
+  rawTime: string,
+  authType: string,
+  log: Logger,
+): Promise<BiometricDevice> {
   const employee = await findEmployeeByPunchPin(device.orgId, pin);
   if (!employee) {
     log.warn({ pin, orgId: device.orgId }, "Fingerprint punch for an unrecognized PIN — set it as the employee's biometric PIN");
-    return;
+    return device;
   }
 
   // The terminal retries a batch until it gets "OK" back, so the same
   // punch can arrive more than once — its own raw timestamp string is
   // resent identically on a retry, which is what makes it a safe dedup
   // key even though it's not trusted as the actual event time below.
-  if (await attendancePunchExists(device.orgId, employee.id, device.id, rawTime)) return;
+  if (await attendancePunchExists(device.orgId, employee.id, device.id, rawTime)) return device;
 
-  // Deliberately NOT using the terminal's own reported punch time for the
-  // recorded moment: ZKTeco's ADMS protocol has the device resync its
-  // hardware clock off this server's HTTP response on every heartbeat, so
-  // its self-reported clock drifts to whatever that resolves to combined
-  // with the unit's own GMT offset — observed hours off from reality in
-  // practice, and not fixable by hand on the keypad since the next
-  // heartbeat just resets it again. Punches push in real time
-  // (Realtime=1 in our handshake reply), so the server's own receipt time
-  // is the reliable value here.
-  const occurredAt = new Date();
+  const serverNow = new Date();
+  const deviceTime = parseDeviceTimestamp(rawTime);
+  const calibration: ClockCalibration = deviceTime
+    ? calibrateClock(device, deviceTime, serverNow)
+    : { occurredAt: serverNow, syncedLate: false, persist: null };
+
+  const updatedDevice = calibration.persist ? { ...device, ...calibration.persist } : device;
+  if (calibration.persist) {
+    await updateDeviceClockOffset(device.id, calibration.persist);
+  }
+  const occurredAt = calibration.occurredAt;
 
   // The terminal itself doesn't reliably tell us check-in vs check-out (a
   // bare keypad F22 has no state selector) — toggle off whatever this
   // employee's last event was today, same as pairDailySessions already
   // assumes downstream.
   const last = await getLastAttendanceLog(device.orgId, employee.id);
+
+  // A double tap on the sensor (the first read looked like it failed) would
+  // otherwise toggle into a phantom checkin-then-checkout microsegment
+  // seconds apart. Only guards against this terminal's own last punch —
+  // an employee genuinely checking out on the kiosk shortly after a
+  // terminal check-in is a deliberate action, not a misread.
+  if (last && last.biometricDeviceId === device.id && Math.abs(occurredAt.getTime() - last.occurredAt.getTime()) < MIN_PUNCH_GAP_MS) {
+    log.info(
+      { pin, orgId: device.orgId, employeeId: employee.id },
+      "Ignoring fingerprint punch within 2 minutes of this employee's last punch on the same terminal (likely a double tap)",
+    );
+    return updatedDevice;
+  }
+
   const sameLocalDay =
     last !== null &&
     occurredAt.toLocaleDateString("en-CA", { timeZone }) === last.occurredAt.toLocaleDateString("en-CA", { timeZone });
@@ -182,7 +319,11 @@ async function ingestPunch(device: BiometricDevice, timeZone: string, pin: strin
     biometricDeviceId: device.id,
     sourceRawTimestamp: rawTime,
     occurredAt,
+    syncedLate: calibration.syncedLate,
+    authType,
   });
+
+  return updatedDevice;
 }
 
 export default router;

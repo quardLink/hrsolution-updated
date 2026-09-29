@@ -8,6 +8,9 @@ export interface LogEntry {
   action: string;
   status: string;
   message: string;
+  authType: string;
+  deviceName: string | null;
+  syncedLate: boolean;
 }
 
 export interface Employee {
@@ -16,6 +19,12 @@ export interface Employee {
   role?: string;
   reportingMorning?: string;
   reportingAfternoon?: string;
+  reportingAfternoonEnd?: string;
+}
+
+export interface AttendanceSettings {
+  lateThresholdMinutes: string;
+  weeklyOffDay: string;
 }
 
 export interface OrgInfo {
@@ -40,6 +49,7 @@ export function useAdminAuth(baseUrl: string) {
   const [adminUser, setAdminUser] = useState<AdminUserInfo | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [attendanceSettings, setAttendanceSettings] = useState<AttendanceSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -60,6 +70,7 @@ export function useAdminAuth(baseUrl: string) {
       const data = await res.json();
       setLogs(data.logs ?? []);
       setEmployees(data.employees ?? []);
+      setAttendanceSettings(data.attendanceSettings ?? null);
     } catch {
       setError("Network error");
     } finally {
@@ -119,6 +130,7 @@ export function useAdminAuth(baseUrl: string) {
     setAdminUser(null);
     setLogs([]);
     setEmployees([]);
+    setAttendanceSettings(null);
   }
 
   return {
@@ -130,6 +142,7 @@ export function useAdminAuth(baseUrl: string) {
     adminUser,
     logs,
     employees,
+    attendanceSettings,
     loading,
     error,
     setError,

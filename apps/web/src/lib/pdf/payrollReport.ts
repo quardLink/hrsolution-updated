@@ -11,17 +11,25 @@ import {
 export interface PayrollResult {
   employeeId: string;
   employeeName: string;
+  method: "hourly" | "daily";
   daysInMonth: number;
   dailyRate: number;
   hourlyRate: number;
   totalWorkedHours: number;
   totalOtHours: number;
   otPay: number;
+  pendingOtHours: number;
+  shortHoursDeduction: number;
+  longDayCount: number;
   paidLeaveDays: number;
   unpaidLeaveDays: number;
   leaveDeduction: number;
   absentDays: number;
   absenceDeduction: number;
+  fullDays: number;
+  halfDays: number;
+  halfDayDeduction: number;
+  missingCheckoutReviewDays: number;
   baseSalary: number;
   finalSalary: number;
 }
@@ -47,7 +55,10 @@ export function exportPayrollReportPdf({ year, month, results, orgName }: Payrol
 
   const totalPayout = results.reduce((sum, r) => sum + r.finalSalary, 0);
   const totalOtCost = results.reduce((sum, r) => sum + r.otPay, 0);
-  const totalDeductions = results.reduce((sum, r) => sum + r.leaveDeduction + r.absenceDeduction, 0);
+  const totalDeductions = results.reduce(
+    (sum, r) => sum + r.leaveDeduction + r.absenceDeduction + r.shortHoursDeduction + r.halfDayDeduction,
+    0,
+  );
 
   drawReportBanner(doc, {
     pageWidth,
@@ -79,19 +90,21 @@ export function exportPayrollReportPdf({ year, month, results, orgName }: Payrol
   autoTable(doc, {
     startY: y,
     head: [[
-      "Employee", "Base Salary", "Worked Hrs", "OT Hrs", "OT Pay",
-      "Paid Leave", "Unpaid Leave", "Absent Days", "Deduction", "Final Salary",
+      "Employee", "Method", "Base Salary", "Worked Hrs", "OT Hrs", "OT Pay",
+      "Full/Half Days", "Paid Leave", "Unpaid Leave", "Absent Days", "Deduction", "Final Salary",
     ]],
     body: results.map((r) => [
       r.employeeName,
+      r.method === "daily" ? "Daily" : "Hourly",
       `SAR ${r.baseSalary.toLocaleString()}`,
-      String(r.totalWorkedHours),
+      r.method === "daily" ? "—" : String(r.totalWorkedHours),
       String(r.totalOtHours),
       `SAR ${r.otPay.toLocaleString()}`,
+      r.method === "daily" ? `${r.fullDays} / ${r.halfDays}` : "—",
       String(r.paidLeaveDays),
       String(r.unpaidLeaveDays),
       String(r.absentDays),
-      `-SAR ${(r.leaveDeduction + r.absenceDeduction).toLocaleString()}`,
+      `-SAR ${(r.leaveDeduction + r.absenceDeduction + r.shortHoursDeduction + r.halfDayDeduction).toLocaleString()}`,
       `SAR ${r.finalSalary.toLocaleString()}`,
     ]),
     theme: "striped",
@@ -99,7 +112,7 @@ export function exportPayrollReportPdf({ year, month, results, orgName }: Payrol
     styles: { fontSize: 9, cellPadding: 5 },
     columnStyles: {
       0: { fontStyle: "bold" },
-      9: { fontStyle: "bold", halign: "right" },
+      11: { fontStyle: "bold", halign: "right" },
     },
     margin: { left: margin, right: margin },
   });

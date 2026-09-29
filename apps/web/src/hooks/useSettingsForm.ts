@@ -16,6 +16,21 @@ export interface OfficeSettings {
   payrollShiftEnd: string;
   payrollBreakStart: string;
   payrollBreakEnd: string;
+  otApprovalRequired: boolean;
+  payrollMethod: "hourly" | "daily" | "hybrid";
+  payrollDailyRateBasis: "fixed_30" | "actual_days";
+  payrollStandardDailyHours: string;
+  payrollOtStartsAfterMinutes: string;
+  payrollOtMultiplier: string;
+  payrollRoundingBlockMinutes: string;
+  payrollFullDayMinHours: string;
+  payrollHalfDayMinHours: string;
+  payrollMaxLateMinutesBeforeHalfDay: string;
+  payrollMissingCheckoutHandling: "half_day" | "hr_review";
+  payrollWeekendHolidayPaidAsOvertime: boolean;
+  remoteCheckInMode: "disabled" | "requires_approval" | "auto_approve";
+  remoteCheckInRequireGeofence: boolean;
+  remoteCheckInExpiryHours: string;
 }
 
 // Shared by the General and Working Hours settings panels — both just edit

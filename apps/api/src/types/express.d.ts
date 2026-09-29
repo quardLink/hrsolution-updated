@@ -10,6 +10,9 @@ declare global {
       orgId?: string;
       adminUserId?: string;
       deviceId?: string;
+      // Set by requireDeviceToken when the paired device is an employee's
+      // own remote-checkin phone (not a shared kiosk) — see lib/devices.ts.
+      pairedEmployeeCode?: string | null;
     }
   }
 }

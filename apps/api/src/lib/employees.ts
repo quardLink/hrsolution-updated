@@ -18,6 +18,10 @@ export interface Employee {
   monthlySalary: number;
   faceEnrolled: boolean;
   biometricPin: string | null;
+  // Only meaningful when the org's payrollMethod setting is "hybrid" —
+  // null means "use the company default" (see toPayrollPolicy / the
+  // Hybrid backfill in settings.ts).
+  payrollMethod: "hourly" | "daily" | null;
 }
 
 // Only used internally by the attendance/log route to compare against a
@@ -47,6 +51,7 @@ function toEmployee(row: typeof schema.employees.$inferSelect): Employee {
     monthlySalary: Number(row.monthlySalary),
     faceEnrolled: row.faceDescriptor != null,
     biometricPin: row.biometricPin ?? null,
+    payrollMethod: row.payrollMethod ?? null,
   };
 }
 
@@ -169,6 +174,7 @@ export async function addEmployee(
       monthlySalary: String(emp.monthlySalary ?? 0),
       faceDescriptor: emp.faceDescriptor ?? null,
       biometricPin: emp.biometricPin ?? null,
+      payrollMethod: emp.payrollMethod ?? null,
     })
     .returning();
 
@@ -200,6 +206,20 @@ export async function updateEmployee(
 export async function deleteEmployee(orgId: string, id: string): Promise<void> {
   // Soft delete — set active=false to preserve attendance history integrity
   await updateEmployee(orgId, id, { active: false });
+}
+
+// Actually removes the row — for a mistakenly-added employee (test data,
+// a duplicate, a wrong entry) rather than someone who genuinely worked
+// here. Attendance/leave/payroll rows already store their own copy of the
+// employee name and aren't foreign-keyed to this table, so they aren't
+// deleted here and simply become orphaned history under a code that no
+// longer resolves to a live employee — acceptable for the "shouldn't have
+// existed" case this is for, but this does mean it's the wrong choice for
+// someone with real attendance history (use deleteEmployee/deactivate
+// instead, which keeps that history fully intact and queryable).
+export async function hardDeleteEmployee(orgId: string, id: string): Promise<void> {
+  const db = getDb();
+  await db.delete(schema.employees).where(and(eq(schema.employees.orgId, orgId), eq(schema.employees.code, id)));
 }
 
 // ============================================================

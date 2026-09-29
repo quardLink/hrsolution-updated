@@ -15,6 +15,7 @@ export interface Employee {
   monthlySalary: number;
   faceEnrolled: boolean;
   biometricPin: string | null;
+  payrollMethod: "hourly" | "daily" | null;
 }
 
 export interface EmployeeRole {
@@ -123,5 +124,26 @@ export function useEmployees() {
     }
   }
 
-  return { employees, roles, loading, saveEmployee, deactivate, reactivate };
+  // Permanently removes the row — for a mistakenly-added employee, not a
+  // real one you want to retire (use deactivate for that; it keeps their
+  // attendance/payroll history intact and queryable, this doesn't).
+  async function hardDelete(emp: Employee) {
+    if (
+      !confirm(
+        `Permanently delete ${emp.name}? This cannot be undone. Their attendance history will remain but will no longer be linked to a real employee record. If they have real work history, use Deactivate instead.`,
+      )
+    )
+      return;
+    try {
+      await adminFetch(baseUrl, `/api/admin/employees/${emp.id}/permanent`, {
+        method: "DELETE",
+        errorMessage: "Failed to delete employee",
+      });
+      await load();
+    } catch (err) {
+      onError(toErrorMessage(err));
+    }
+  }
+
+  return { employees, roles, loading, saveEmployee, deactivate, reactivate, hardDelete };
 }

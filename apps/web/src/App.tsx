@@ -6,6 +6,7 @@ import AttendancePage from "@/pages/AttendancePage";
 import AdminPage from "@/pages/AdminPage";
 import SignupPage from "@/pages/SignupPage";
 import LeavePage from "@/pages/LeavePage";
+import RemoteCheckInPage from "@/pages/RemoteCheckInPage";
 import NotFound from "@/pages/not-found";
 import { isDeviceNotPaired } from "@/lib/deviceAuth";
 import { LocaleProvider } from "@/contexts/LocaleContext";
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/" component={AttendancePage} />
       <Route path="/signup" component={SignupPage} />
       <Route path="/leave-request/:orgSlug" component={LeavePage} />
+      <Route path="/remote-checkin" component={RemoteCheckInPage} />
       <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>

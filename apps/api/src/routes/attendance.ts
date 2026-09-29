@@ -3,7 +3,7 @@ import { getPublicEmployees, verifyEmployee, getAttendanceStatus } from "../lib/
 import { getOfficeSettings } from "../lib/settings";
 import { appendAttendanceRow } from "../lib/attendanceLogs";
 import { getOrgById } from "../lib/orgs";
-import { requireDeviceToken } from "../lib/devices";
+import { requireKioskDeviceToken } from "../lib/devices";
 import { isValidDescriptor, isFaceMatch } from "../lib/faceMatch";
 import { LogAttendanceBody } from "@workspace/api-schema";
 
@@ -21,7 +21,7 @@ const router: IRouter = Router();
 // including ones headed for /api/admin/* or /api/leave/* routes mounted
 // after it.
 
-router.get("/attendance/org-info", requireDeviceToken, async (req, res): Promise<void> => {
+router.get("/attendance/org-info", requireKioskDeviceToken, async (req, res): Promise<void> => {
   const org = await getOrgById(req.orgId!);
   if (!org) {
     res.status(404).json({ error: "Firm not found" });
@@ -30,7 +30,7 @@ router.get("/attendance/org-info", requireDeviceToken, async (req, res): Promise
   res.json({ name: org.name, logoDataUrl: org.logoDataUrl });
 });
 
-router.get("/attendance/employees", requireDeviceToken, async (req, res): Promise<void> => {
+router.get("/attendance/employees", requireKioskDeviceToken, async (req, res): Promise<void> => {
   try {
     const settings = await getOfficeSettings(req.orgId!);
     const employees = await getPublicEmployees(req.orgId!, {
@@ -46,7 +46,7 @@ router.get("/attendance/employees", requireDeviceToken, async (req, res): Promis
   }
 });
 
-router.post("/attendance/log", requireDeviceToken, async (req, res): Promise<void> => {
+router.post("/attendance/log", requireKioskDeviceToken, async (req, res): Promise<void> => {
   const parsed = LogAttendanceBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -119,6 +119,10 @@ router.post("/attendance/log", requireDeviceToken, async (req, res): Promise<voi
       status,
       message,
       deviceId: req.deviceId,
+      // Matches the check a few lines up: an enrolled employee's face was
+      // required and already verified to reach this point, so "face" is
+      // accurate, not just "we asked for it".
+      authType: employee.faceDescriptor ? "face" : "pin",
     });
   } catch (err) {
     req.log.error({ err }, "Failed to write attendance log");

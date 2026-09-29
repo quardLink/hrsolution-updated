@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useLocale } from "@/contexts/LocaleContext";
 import type { OfficeSettings } from "../../../hooks/useSettingsForm";
 import SettingsSaveBar from "./SettingsSaveBar";
@@ -102,6 +103,18 @@ export default function SettingsHoursPanel({ draft, onChange, onSubmit, isDirty,
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3">{t("settings.payrollBreakHint")}</p>
+
+          <div className="flex items-center justify-between gap-4 mt-5 pt-4 border-t">
+            <div className="space-y-0.5">
+              <Label htmlFor="ot-approval-required">{t("settings.otApprovalTitle")}</Label>
+              <p className="text-xs text-muted-foreground">{t("settings.otApprovalHint")}</p>
+            </div>
+            <Switch
+              id="ot-approval-required"
+              checked={draft.otApprovalRequired}
+              onCheckedChange={(checked) => onChange({ ...draft, otApprovalRequired: checked })}
+            />
+          </div>
         </CardContent>
       </Card>
 

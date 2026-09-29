@@ -38,11 +38,12 @@ async function resolveIpLocation(ip: string | undefined): Promise<string | null>
 export async function generatePairingCode(
   orgId: string,
   deviceName = "Kiosk",
+  employeeCode?: string,
 ): Promise<{ code: string; expiresAt: Date }> {
   const db = getDb();
   const code = generateCode();
   const expiresAt = new Date(Date.now() + PAIRING_CODE_TTL_MS);
-  await db.insert(schema.pairingCodes).values({ orgId, code, deviceName, expiresAt });
+  await db.insert(schema.pairingCodes).values({ orgId, code, deviceName, employeeCode, expiresAt });
   return { code, expiresAt };
 }
 
@@ -52,7 +53,7 @@ export async function generatePairingCode(
 export async function redeemPairingCode(
   code: string,
   meta: { userAgent?: string; ip?: string } = {},
-): Promise<{ orgId: string; deviceId: string; token: string } | null> {
+): Promise<{ orgId: string; deviceId: string; token: string; employeeCode: string | null } | null> {
   const db = getDb();
   const now = new Date();
 
@@ -69,6 +70,22 @@ export async function redeemPairingCode(
     .returning();
   if (!claimed) return null; // lost a race with a concurrent redemption
 
+  // "One paired phone per employee" — pairing a new phone replaces
+  // whatever previously held this employeeCode, rather than leaving two
+  // live tokens able to punch for the same person.
+  if (claimed.employeeCode) {
+    await db
+      .update(schema.devices)
+      .set({ revokedAt: now })
+      .where(
+        and(
+          eq(schema.devices.orgId, claimed.orgId),
+          eq(schema.devices.employeeCode, claimed.employeeCode),
+          isNull(schema.devices.revokedAt),
+        ),
+      );
+  }
+
   const token = randomBytes(32).toString("base64url");
   const pairedLocation = await resolveIpLocation(meta.ip);
   const [device] = await db
@@ -81,16 +98,17 @@ export async function redeemPairingCode(
       pairedIp: meta.ip,
       pairedLocation,
       lastSeenIp: meta.ip,
+      employeeCode: claimed.employeeCode,
     })
     .returning();
 
-  return { orgId: device.orgId, deviceId: device.id, token };
+  return { orgId: device.orgId, deviceId: device.id, token, employeeCode: device.employeeCode };
 }
 
 export async function verifyDeviceToken(
   token: string,
   meta: { ip?: string } = {},
-): Promise<{ orgId: string; deviceId: string } | null> {
+): Promise<{ orgId: string; deviceId: string; employeeCode: string | null } | null> {
   const db = getDb();
   const device = await db.query.devices.findFirst({
     where: eq(schema.devices.tokenHash, hashToken(token)),
@@ -106,13 +124,27 @@ export async function verifyDeviceToken(
       () => {},
     );
 
-  return { orgId: device.orgId, deviceId: device.id };
+  return { orgId: device.orgId, deviceId: device.id, employeeCode: device.employeeCode };
 }
 
+// Kiosk devices only (Settings → Devices) — an employee's personal
+// remote-checkin phone is a different concept, shown instead on that
+// employee's own record (see getEmployeeDevice).
 export async function listDevices(orgId: string) {
   const db = getDb();
   return db.query.devices.findMany({
-    where: and(eq(schema.devices.orgId, orgId), isNull(schema.devices.revokedAt)),
+    where: and(eq(schema.devices.orgId, orgId), isNull(schema.devices.revokedAt), isNull(schema.devices.employeeCode)),
+  });
+}
+
+export async function getEmployeeDevice(orgId: string, employeeCode: string) {
+  const db = getDb();
+  return db.query.devices.findFirst({
+    where: and(
+      eq(schema.devices.orgId, orgId),
+      eq(schema.devices.employeeCode, employeeCode),
+      isNull(schema.devices.revokedAt),
+    ),
   });
 }
 
@@ -121,6 +153,17 @@ export async function revokeDevice(orgId: string, deviceId: string): Promise<voi
   await db
     .update(schema.devices)
     .set({ revokedAt: new Date() })
+    .where(and(eq(schema.devices.id, deviceId), eq(schema.devices.orgId, orgId)));
+}
+
+// The name is only ever set once, at pairing time (typed in before
+// generating the code, or defaulted to "Kiosk") — this is the only way to
+// change it afterward.
+export async function renameDevice(orgId: string, deviceId: string, name: string): Promise<void> {
+  const db = getDb();
+  await db
+    .update(schema.devices)
+    .set({ name })
     .where(and(eq(schema.devices.id, deviceId), eq(schema.devices.orgId, orgId)));
 }
 
@@ -140,5 +183,34 @@ export async function requireDeviceToken(req: Request, res: Response, next: Next
 
   req.orgId = device.orgId;
   req.deviceId = device.deviceId;
+  req.pairedEmployeeCode = device.employeeCode;
   next();
+}
+
+// Same as requireDeviceToken, plus rejecting an employee's personal
+// remote-checkin phone — the kiosk endpoints assume a shared device
+// anyone at the office can use, which a personal phone token was
+// deliberately scoped tighter than (see redeemPairingCode).
+export async function requireKioskDeviceToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  await requireDeviceToken(req, res, () => {
+    if (req.pairedEmployeeCode) {
+      res.status(401).json({ error: "Device not paired", code: "DEVICE_NOT_PAIRED" });
+      return;
+    }
+    next();
+  });
+}
+
+// The mirror image, for the remote-checkin routes: only a personal
+// employee-scoped phone token may call these, never a shared kiosk token
+// — a kiosk device has no single employeeCode to submit a remote request
+// for.
+export async function requireEmployeeDeviceToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  await requireDeviceToken(req, res, () => {
+    if (!req.pairedEmployeeCode) {
+      res.status(401).json({ error: "Device not paired", code: "DEVICE_NOT_PAIRED" });
+      return;
+    }
+    next();
+  });
 }

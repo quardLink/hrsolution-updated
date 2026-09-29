@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getDateKey,
   gradeFromScore,
+  minutesEarly,
   minutesLate,
   parseTimestamp,
   scoreFromMinutesLate,
 } from "../lib/attendance";
-import type { Employee, LogEntry } from "./useAdminAuth";
+import type { AttendanceSettings, Employee, LogEntry } from "./useAdminAuth";
 
 // A gap between two punch segments on the same day — i.e. a real mid-day
 // checkout followed by a checkin, most commonly a lunch/rest break.
@@ -15,13 +16,22 @@ export interface BreakInterval {
   end: Date;
 }
 
+// The doc-facing status vocabulary — "unbalanced" covers the rarer
+// multi-punch mismatch cases (e.g. 3 check-ins, 2 check-outs) that don't
+// map cleanly to any of the others.
+export type DayStatus = "present" | "late" | "early_leave" | "missing_checkout" | "weekend" | "unbalanced";
+
 export interface DaySummary {
   date: string;
   dateObj: Date;
   employeeId: string;
   employeeName: string;
   firstCheckIn: Date | null;
+  firstCheckInAuthType: string | null;
+  firstCheckInDevice: string | null;
   lastCheckOut: Date | null;
+  lastCheckOutAuthType: string | null;
+  lastCheckOutDevice: string | null;
   breaks: BreakInterval[];
   checkIns: number;
   checkOuts: number;
@@ -29,7 +39,9 @@ export interface DaySummary {
   hasAnomaly: boolean;
   anomalyReason: string;
   minutesLate: number;
+  minutesEarly: number;
   punctualityScore: number;
+  status: DayStatus;
 }
 
 export interface EmployeeRanking {
@@ -52,7 +64,11 @@ export interface EmployeeRanking {
   grade: string;
 }
 
-export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) {
+export function useAttendanceAnalytics(
+  logs: LogEntry[],
+  employees: Employee[],
+  attendanceSettings: AttendanceSettings | null,
+) {
   const [filterEmployee, setFilterEmployee] = useState<string>("all");
   const [filterFromDate, setFilterFromDate] = useState<string>("");
   const [filterToDate, setFilterToDate] = useState<string>("");
@@ -91,7 +107,13 @@ export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) 
     // aren't guaranteed to arrive already sorted.
     const grouped = new Map<
       string,
-      { employeeId: string; employeeName: string; date: string; dateObj: Date; punches: { action: string; timestamp: Date }[] }
+      {
+        employeeId: string;
+        employeeName: string;
+        date: string;
+        dateObj: Date;
+        punches: { action: string; timestamp: Date; authType: string; deviceName: string | null }[];
+      }
     >();
     for (const log of filteredLogs) {
       const d = parseTimestamp(log.timestamp);
@@ -107,7 +129,12 @@ export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) 
           punches: [],
         });
       }
-      grouped.get(key)!.punches.push({ action: log.action, timestamp: d });
+      grouped.get(key)!.punches.push({
+        action: log.action,
+        timestamp: d,
+        authType: log.authType,
+        deviceName: log.deviceName,
+      });
     }
 
     const result: DaySummary[] = [];
@@ -118,26 +145,48 @@ export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) 
       // next checkout closes it, and a further checkin opens a new one —
       // which is exactly what a mid-day break (punch out, punch back in)
       // produces. The gap between two segments is the break itself.
-      const segments: { checkIn: Date; checkOut: Date | null }[] = [];
-      let openCheckIn: Date | null = null;
+      interface Segment {
+        checkIn: Date;
+        checkInAuthType: string;
+        checkInDevice: string | null;
+        checkOut: Date | null;
+        checkOutAuthType: string | null;
+        checkOutDevice: string | null;
+      }
+      const segments: Segment[] = [];
+      let open: Segment | null = null;
       let checkIns = 0;
       let checkOuts = 0;
       for (const p of sorted) {
         if (p.action === "checkin") {
           checkIns++;
-          if (openCheckIn === null) openCheckIn = p.timestamp;
+          if (open === null) {
+            open = {
+              checkIn: p.timestamp,
+              checkInAuthType: p.authType,
+              checkInDevice: p.deviceName,
+              checkOut: null,
+              checkOutAuthType: null,
+              checkOutDevice: null,
+            };
+          }
         } else if (p.action === "checkout") {
           checkOuts++;
-          if (openCheckIn !== null) {
-            segments.push({ checkIn: openCheckIn, checkOut: p.timestamp });
-            openCheckIn = null;
+          if (open !== null) {
+            open.checkOut = p.timestamp;
+            open.checkOutAuthType = p.authType;
+            open.checkOutDevice = p.deviceName;
+            segments.push(open);
+            open = null;
           }
         }
       }
-      if (openCheckIn !== null) segments.push({ checkIn: openCheckIn, checkOut: null });
+      if (open !== null) segments.push(open);
 
-      const firstCheckIn = segments[0]?.checkIn ?? null;
-      const lastCheckOut = segments[segments.length - 1]?.checkOut ?? null;
+      const firstSegment = segments[0];
+      const lastSegment = segments[segments.length - 1];
+      const firstCheckIn = firstSegment?.checkIn ?? null;
+      const lastCheckOut = lastSegment?.checkOut ?? null;
 
       const breaks: BreakInterval[] = [];
       for (let i = 0; i < segments.length - 1; i++) {
@@ -161,7 +210,11 @@ export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) 
         employeeId: g.employeeId,
         employeeName: g.employeeName,
         firstCheckIn,
+        firstCheckInAuthType: firstSegment?.checkInAuthType ?? null,
+        firstCheckInDevice: firstSegment?.checkInDevice ?? null,
         lastCheckOut,
+        lastCheckOutAuthType: lastSegment?.checkOutAuthType ?? null,
+        lastCheckOutDevice: lastSegment?.checkOutDevice ?? null,
         breaks,
         checkIns,
         checkOuts,
@@ -169,7 +222,9 @@ export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) 
         hasAnomaly: false,
         anomalyReason: "",
         minutesLate: 0,
+        minutesEarly: 0,
         punctualityScore: 0,
+        status: "present",
       };
 
       if (entry.checkIns > 0 && entry.checkOuts === 0) {
@@ -182,8 +237,9 @@ export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) 
         entry.hasAnomaly = true;
         entry.anomalyReason = `${entry.checkIns} check-ins, ${entry.checkOuts} check-outs`;
       }
+
+      const emp = employeeMap.get(entry.employeeId);
       if (entry.firstCheckIn) {
-        const emp = employeeMap.get(entry.employeeId);
         const expected = emp?.reportingMorning;
         if (expected && expected !== "00:00") {
           entry.minutesLate = minutesLate(entry.firstCheckIn, expected);
@@ -191,6 +247,32 @@ export function useAttendanceAnalytics(logs: LogEntry[], employees: Employee[]) 
         } else {
           entry.punctualityScore = 100;
         }
+      }
+      if (entry.lastCheckOut && emp?.reportingAfternoonEnd) {
+        entry.minutesEarly = minutesEarly(entry.lastCheckOut, emp.reportingAfternoonEnd);
+      }
+
+      // Status vocabulary matching the "Present / Late / Early Leave /
+      // Missing Checkout / Weekend" scheme — resolved in priority order:
+      // a data problem (missing checkout, or the rarer unbalanced-punch
+      // case) always wins, then the weekly off day (punctuality doesn't
+      // apply to a day nobody was scheduled to work), then punctuality.
+      const graceMinutes = Number(attendanceSettings?.lateThresholdMinutes) || 0;
+      const weekday = g.dateObj.toLocaleDateString("en-US", { weekday: "long" });
+      const isWeeklyOff = attendanceSettings?.weeklyOffDay === weekday;
+
+      if (entry.checkIns > 0 && entry.checkOuts === 0) {
+        entry.status = "missing_checkout";
+      } else if (entry.checkIns !== entry.checkOuts) {
+        entry.status = "unbalanced";
+      } else if (isWeeklyOff) {
+        entry.status = "weekend";
+      } else if (entry.minutesLate > graceMinutes) {
+        entry.status = "late";
+      } else if (entry.minutesEarly > graceMinutes) {
+        entry.status = "early_leave";
+      } else {
+        entry.status = "present";
       }
 
       result.push(entry);

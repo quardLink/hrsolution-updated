@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { requireOrgSession } from "../lib/session";
-import { generatePairingCode, redeemPairingCode, listDevices, revokeDevice } from "../lib/devices";
+import { generatePairingCode, redeemPairingCode, listDevices, revokeDevice, renameDevice } from "../lib/devices";
 
 const router: IRouter = Router();
 
@@ -30,6 +30,16 @@ router.get("/admin/devices", requireOrgSession, async (req, res): Promise<void> 
 
 router.delete("/admin/devices/:id", requireOrgSession, async (req, res): Promise<void> => {
   await revokeDevice(req.orgId!, String(req.params.id));
+  res.json({ success: true });
+});
+
+router.patch("/admin/devices/:id", requireOrgSession, async (req, res): Promise<void> => {
+  const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  if (!name) {
+    res.status(400).json({ error: "Name is required" });
+    return;
+  }
+  await renameDevice(req.orgId!, String(req.params.id), name);
   res.json({ success: true });
 });
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Pencil, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,8 @@ export default function DevicesPanel() {
   const [generating, setGenerating] = useState(false);
   const [pairing, setPairing] = useState<PairingCode | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   async function load() {
     setLoading(true);
@@ -120,6 +123,27 @@ export default function DevicesPanel() {
     }
   }
 
+  function startRename(d: Device) {
+    setRenamingId(d.id);
+    setRenameValue(d.name);
+  }
+
+  async function saveRename(id: string) {
+    const name = renameValue.trim();
+    if (!name) return;
+    try {
+      await adminFetch(baseUrl, `/api/admin/devices/${id}`, {
+        method: "PATCH",
+        body: { name },
+        errorMessage: "Failed to rename device",
+      });
+      setRenamingId(null);
+      await load();
+    } catch (err) {
+      onError(toErrorMessage(err));
+    }
+  }
+
   const dateLocale = locale === "ar" ? "ar-SA" : "en-US";
 
   return (
@@ -165,7 +189,30 @@ export default function DevicesPanel() {
               {devices.map((d) => (
                 <div key={d.id} className="flex items-center justify-between py-3 gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium text-sm">{d.name}</div>
+                    {renamingId === d.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && saveRename(d.id)}
+                          autoFocus
+                          className="h-7 text-sm"
+                        />
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => saveRename(d.id)}>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => setRenamingId(null)}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 group">
+                        <div className="font-medium text-sm">{d.name}</div>
+                        <button onClick={() => startRename(d)} className="text-muted-foreground hover:text-primary opacity-60 hover:opacity-100">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground">
                       {describeUserAgent(d.userAgent, t("settings.devicesUnknown"))}
                       {(d.pairedLocation || d.pairedIp) && ` · ${t("settings.devicesPairedFrom")} ${d.pairedLocation || d.pairedIp}`}
